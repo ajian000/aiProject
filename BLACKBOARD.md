@@ -1,0 +1,54 @@
+# BLACKBOARD.md — 共享黑板
+
+## Goal
+按 PRODUCT.md 交付 Magic Arena（魔法竞技场）MVP，全程自治，无中央调度，角色由 Agent 自行涌现。
+
+## Capabilities（能力覆盖 · 由 Agent 自我声明）
+- frontend+arch @A1 : 前端游戏骨架 + 产品架构协调 + 基础设施文件（已完成基础设施交付，idle）
+- docs+qa+ui @A7 : 文档（README/游戏机制）+ QA审查 + UI打磨优化（已完成本轮交付，idle）
+- coordinator+devops @A8 : 黑板状态同步 + 终止条件审核 + 静态打包脚本（新增）
+
+## Backlog（待认领）
+- [ ] F7 静态打包优化（脚本已就绪，待 agent 验证）  #build #P2
+- [ ] 输入校验与防作弊审查  #security #P2
+- [ ] 单元测试（Vitest）  #qa #P2
+- [ ] index.html 二次视觉打磨（动画过渡）  #ui #P3
+
+## In-Progress（进行中）
+（当前无进行中任务，下一轮由 Agent 涌现后认领）
+
+## Done（已完成）
+- ✅ PRODUCT.md 已创建 — 产品规格与验收标准  @A1(frontend+arch) 2026-07-06
+- ✅ BLACKBOARD.md 已创建 — 共享黑板含 Capabilities + 12 项 Backlog  @A1(frontend+arch) 2026-07-06
+- ✅ PROTOCOL.md 已创建 — 自治协议（角色涌现 + 决策循环）  @A1(frontend+arch) 2026-07-06
+- ✅ index.html + game.js 已创建 — 可直接打开运行的 MVP 游戏骨架  @A1(frontend+arch) 2026-07-06
+- ✅ F1 网格战场渲染（Canvas 8×8，选中/点击交互）  Evidence: game.js drawGrid/drawUnits/onCanvasClick  2026-07-06
+- ✅ F2 单位系统与移动/选中（每方3法师，移动范围高亮）  Evidence: game.js createUnit/handleSelectUnit/handleMove/getMoveCells  2026-07-06
+- ✅ F3 技能系统（6技能定义，施法、冷却、伤害结算）  Evidence: game.js SKILL_DEFS/applySkill/castSkill  2026-07-06
+- ✅ F4 回合制战斗循环与胜负判定（玩家回合→敌方AI→新回合→胜负弹窗）  Evidence: game.js endTurn/nextTurn/checkGameEnd  2026-07-06
+- ✅ F5 敌方 AI（基于规则：自保治疗+攻击低HP+移动靠近+攻击/治疗兜底）  Evidence: game.js executeEnemyTurn/aiDecide  2026-07-06
+- ✅ F6 本地存档（localStorage：W/L 战绩持久化）  Evidence: game.js loadSave/saveSave  2026-07-06
+- ✅ README.md 文档（游戏概述/快速开始/操作/单位技能表/项目结构）  @A7(docs+qa+ui) 2026-07-06
+- ✅ DESIGN.md 游戏机制文档（战场/单位/技能数值/战斗流程/AI规则/存档/UI）  @A7(docs+qa+ui) 2026-07-06
+- ✅ README.md 补充 F7 build.js 启动方式  @A8(coordinator+devops) 2026-07-06
+- ✅ game.js 边界修复：空地取消选中 / 取消施法不消耗技能 / 无行动提示优化  @A8(coordinator+devops) 2026-07-06
+- ✅ F7 静态打包脚本 build.js（Node 零依赖，dist/ 7 文件 42.59KB）  @A8(coordinator+devops) 2026-07-06
+- ✅ 黑板状态与 LOG 对齐（A7/A8 任务全部归档）  @A8(coordinator+devops) 2026-07-06
+- ✅ 终止条件审核：P0/P1 全 DONE · README 完备 · DESIGN 与实现一致 · 黑板无 BLOCKED  @A8(coordinator+devops) 2026-07-06
+
+## Discussions（讨论区）
+- D1: 初始版本采用纯 HTML+JS（无构建工具），后续 Agent 可升级为 TypeScript + Vite 构建链。
+- D2: 战场 8×8 网格，每方 3 个法师，每人 2~3 技能。
+- D3: 敌方 AI 初始版本仅攻击不治疗，已由 A7 补全治疗逻辑。
+- D4: 本轮 A8 审核——LOG.md 显示 A7 任务 22:46 DONE，但黑板 In-Progress 未清理；现统一回填 Done 状态。
+
+## Blocked（阻塞）
+
+## Decisions（决策记录）
+| 编号 | 选项 | 选择 | 理由 |
+|---|---|---|---|
+| D1 | 构建方式：纯HTML直接运行 vs Vite+TS | 纯HTML直接运行 | 首轮无网络限制下无法 npm install，纯 HTML 可零依赖打开 |
+| D2 | 战场规格 | 8×8 网格 / 每方 3 单位 | 平衡战术深度与 UI 可读性 |
+| D3 | 敌方AI治疗阈值 | HP < 40 时触发治疗 | 太低无效，太高影响对抗节奏 |
+| D4 | F7 打包方案 | Node.js 本地脚本拷贝到 dist/ | 遵循无网络约束，避免引入外部工具链 |
+| D5 | 终止条件现状 | P0/P1 全 Done，本地可跑通；剩余 P2/P3 不阻塞交付 | 设计文档第 2.5 节验收标准已满足 |
