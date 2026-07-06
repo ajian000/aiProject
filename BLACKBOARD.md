@@ -8,6 +8,9 @@
 - docs+qa+ui @A7 : 文档（README/游戏机制）+ QA审查 + UI打磨优化（已完成本轮交付，idle）
 - coordinator+devops @A8 : 黑板状态同步 + 终止条件审核 + 静态打包脚本（已完成，idle）
 - security @A9 : 输入校验与存档完整性审查（已完成本轮交付，idle）
+- content @A10 : 阶段二拓展（新机制/新内容设计）+ 文档与实现一致性维护（本轮交付后 idle）
+- generalist @A11 : 阶段二手感优化 / 通才兜底（本轮交付后 idle）
+- control @A12 : 阶段二拓展（控制技能机制 / 新战术维度）+ 实现与文档一致性（本轮交付后 idle）
 
 ## Backlog（待认领）
 - [ ] F7 静态打包优化（脚本已就绪，待 agent 验证）  #build #P2
@@ -36,12 +39,17 @@
 - ✅ 黑板状态与 LOG 对齐（A7/A8 任务全部归档）  @A8(coordinator+devops) 2026-07-06
 - ✅ 终止条件审核：P0/P1 全 DONE · README 完备 · DESIGN 与实现一致 · 黑板无 BLOCKED  @A8(coordinator+devops) 2026-07-06
 - ✅ 输入校验与防作弊审查（本地代码审查 + loadSave 存档格式校验/钳制）  @A9(security) 2026-07-06
+- ✅ EXPAND 范围伤害(AoE)机制落地 + 新技能"陨石术"(dmg18/range4/CD2/aoeRadius1)  @A10(content) 2026-07-07 — 复用 SKILL_DEFS 闲置的 aoeRadius 字段；莫甘娜(meteor↔shadowbolt)、安娜(meteor↔fireball)换装，保持每方3单位/每单位3技能  Evidence: game.js applySkill(SKILL_DEFS.meteor)/handleSelectTarget/aiDecide + DESIGN §3.5
+- ✅ IMPROVE 手感优化：单位施法/跳过后自动选中下一个未行动玩家单位（selectNextPlayerUnit），减少手动点击  @A11(generalist) 2026-07-07 — Evidence: game.js handleSelectTarget/skipUnit + DESIGN §8.1；node --check game.js → SYNTAX_OK
+- ✅ EXPAND 控制技能"眩晕术"(stun, range3/CD3, isStun) 落地：雷法师·特斯拉以 stun 替换 frostbolt；敌方单位被眩晕时跳过其下个回合行动；含视觉"晕"标记与 UI 状态提示  @A12(control) 2026-07-07 — 复用既有 SKILL_DEFS 结构与 getUnitAt 校验，遵守"每方≤3单位/单位2~3技能"约束  Evidence: game.js SKILL_DEFS.stun/handleSelectTarget/applySkill/executeEnemyTurn/drawUnits/updateUI + DESIGN §3.6；node --check game.js → SYNTAX_OK
 
 ## Discussions（讨论区）
 - D1: 初始版本采用纯 HTML+JS（无构建工具），后续 Agent 可升级为 TypeScript + Vite 构建链。
 - D2: 战场 8×8 网格，每方 3 个法师，每人 2~3 技能。
 - D3: 敌方 AI 初始版本仅攻击不治疗，已由 A7 补全治疗逻辑。
 - D4: 本轮 A8 审核——LOG.md 显示 A7 任务 22:46 DONE，但黑板 In-Progress 未清理；现统一回填 Done 状态。
+- D7: 本轮 A10 引入 AoE 机制，复用 SKILL_DEFS 既有 aoeRadius 字段（此前恒为 0）；莫甘娜以 meteor 替换 shadowbolt、安娜以 meteor 替换 fireball，避免突破"每方≤3单位 / 单位2~3技能"约束。
+- D9: 本轮 A12 引入控制技能"眩晕术"，复用 SKILL_DEFS 既有结构（新增 isStun 字段与单位 stunned 状态）；特斯拉以 stun 替换 frostbolt，避免突破"每方≤3单位 / 单位2~3技能"约束。
 
 ## Blocked（阻塞）
 
@@ -54,3 +62,6 @@
 | D4 | F7 打包方案 | Node.js 本地脚本拷贝到 dist/ | 遵循无网络约束，避免引入外部工具链 |
 | D5 | 终止条件现状 | P0/P1 全 Done，本地可跑通；剩余 P2/P3 不阻塞交付 | 设计文档第 2.5 节验收标准已满足 |
 | D6 | 防作弊策略 | 单机游戏不引入防作弊（无服务端），仅对本地存档做格式校验与钳制 | 篡改本地战绩属用户自主管辖，校验防止崩溃/异常显示 |
+| D7 | 阶段二拓展方向 | 落地闲置的 AoE 字段 + 新技能"陨石术"，通过替换既有单位技能实现（不新增单位） | 复用已有 aoeRadius 字段零新依赖；遵守 PRODUCT "每方≤3单位/单位2~3技能"约束 |
+| D8 | 阶段二手感优化 | 单位施法/跳过后自动选中下一个未行动单位（selectNextPlayerUnit），不自动结束回合；全部行动完才清空 | 减少手动重复点击、提升流畅度，同时保留玩家对"结束回合"的主动控制（不突破回合制边界） |
+| D9 | 阶段二拓展方向（控制） | 引入"眩晕术"控制技能（替换特斯拉原冰霜箭），通过 `stunned` 状态使敌方下回合跳过行动 | 增加战术维度（先手控制/打断敌方治疗），复用既有字段零新依赖；遵守 PRODUCT "每方≤3单位/单位2~3技能"约束；眩晕不可叠加且受 CD3 限制 |

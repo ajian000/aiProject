@@ -14,6 +14,10 @@
 npx serve .
 # 或
 python -m http.server 8080
+
+# 方式三：使用 F7 打包脚本（生成 dist/ 目录）
+node build.js
+# 然后双击 dist/index.html
 ```
 
 > ⚠️ 本项目为纯单机游戏，无需安装任何服务端、数据库或 Docker。

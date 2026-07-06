@@ -28,18 +28,20 @@ const Game = (() => {
     lightning: { name: '闪电链', dmg: 18, range: 3, cooldown: 2, desc: '范围3格，18伤害，CD2回合', aoeRadius: 0 },
     shadowbolt: { name: '暗影弹', dmg: 22, range: 3, cooldown: 0, desc: '范围3格，22伤害', aoeRadius: 0 },
     drain: { name: '生命汲取', dmg: 12, range: 2, cooldown: 1, desc: '范围2格，12伤害+自回8HP，CD1', aoeRadius: 0, selfHeal: 8 },
+    meteor: { name: '陨石术', dmg: 18, range: 4, cooldown: 2, desc: '范围4格，18伤害，命中格周围1格内所有敌方单位，CD2回合', aoeRadius: 1 },
+    stun: { name: '眩晕术', dmg: 0, range: 3, cooldown: 3, desc: '范围3格，使敌方目标下回合无法行动（控制），CD3回合', aoeRadius: 0, isStun: true },
   };
 
   // ---- 单位模板 ----
   const PLAYER_UNITS = [
     { name: '炎法师·艾拉', maxHp: 80, moveRange: 2, skills: ['fireball', 'frostbolt', 'heal'], color: '#66bb6a' },
-    { name: '雷法师·特斯拉', maxHp: 70, moveRange: 3, skills: ['lightning', 'frostbolt', 'heal'], color: '#43a047' },
-    { name: '暗法师·莫甘娜', maxHp: 65, moveRange: 2, skills: ['shadowbolt', 'drain', 'frostbolt'], color: '#81c784' },
+    { name: '雷法师·特斯拉', maxHp: 70, moveRange: 3, skills: ['lightning', 'stun', 'heal'], color: '#43a047' },
+    { name: '暗法师·莫甘娜', maxHp: 65, moveRange: 2, skills: ['meteor', 'drain', 'frostbolt'], color: '#81c784' },
   ];
   const ENEMY_UNITS = [
     { name: '骷髅法师·卡尔', maxHp: 75, moveRange: 2, skills: ['shadowbolt', 'frostbolt', 'drain'], color: '#ef5350' },
     { name: '暗影巫·维克', maxHp: 65, moveRange: 3, skills: ['lightning', 'shadowbolt'], color: '#e53935' },
-    { name: '亡灵术士·安娜', maxHp: 60, moveRange: 2, skills: ['fireball', 'drain', 'heal'], color: '#c62828' },
+    { name: '亡灵术士·安娜', maxHp: 60, moveRange: 2, skills: ['meteor', 'drain', 'heal'], color: '#c62828' },
   ];
 
   // ---- 游戏状态 ----
@@ -99,6 +101,7 @@ const Game = (() => {
       gx, gy,
       color: def.color,
       acted: false,
+      stunned: false,
     };
   }
 
@@ -185,6 +188,14 @@ const Game = (() => {
         ctx.arc(px, py, 28, 0, Math.PI * 2);
         ctx.fill();
       }
+      // 眩晕标记
+      if (u.stunned) {
+        ctx.fillStyle = '#e0a0ff';
+        ctx.font = 'bold 14px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('晕', px, py - 30);
+      }
     });
   }
 
@@ -263,47 +274,87 @@ const Game = (() => {
       return;
     }
 
-    // 治愈术可对友方施放
-    if (activeSkill.isHeal && target && target.team === selectedUnit.team) {
-      applySkill(selectedUnit, target, activeSkill);
-    } else if (!activeSkill.isHeal && target && target.team !== selectedUnit.team) {
-      applySkill(selectedUnit, target, activeSkill);
-    } else if (!activeSkill.isHeal && !target) {
-      // 对空地施放（仍消耗技能）
-      addLog(`${selectedUnit.name} 对 (${gx},${gy}) 施放 ${activeSkill.name}，无目标`, 'info');
-      activeSkill.cd = activeSkill.cooldown;
+    // 治愈术对友方、眩晕术对敌方；其余伤害技能（单体/范围）以点击格为中心结算
+    if (activeSkill.isHeal) {
+      if (target && target.team === selectedUnit.team) {
+        applySkill(selectedUnit, gx, gy, activeSkill);
+      } else {
+        addLog(`${selectedUnit.name} 取消施放 ${activeSkill.name}（无效目标：需选友方）`, 'info');
+        attackHighlightCells = []; activeSkill = null; phase = 'selectUnit'; updateUI(); render(); return;
+      }
+    } else if (activeSkill.isStun) {
+      if (target && target.team !== selectedUnit.team) {
+        applySkill(selectedUnit, gx, gy, activeSkill);
+      } else {
+        addLog(`${selectedUnit.name} 取消施放 ${activeSkill.name}（无效目标：需选敌方）`, 'info');
+        attackHighlightCells = []; activeSkill = null; phase = 'selectUnit'; updateUI(); render(); return;
+      }
     } else {
-      // 无效目标：取消施法，不消耗技能，不算行动
-      addLog(`${selectedUnit.name} 取消施放 ${activeSkill.name}（无效目标）`, 'info');
-      attackHighlightCells = [];
-      activeSkill = null;
-      phase = 'selectUnit';
-      updateUI();
-      render();
-      return;
+      // 单体或范围伤害：以点击格为中心；范围技能会波及周围敌方（含空地中心）
+      applySkill(selectedUnit, gx, gy, activeSkill);
     }
 
     attackHighlightCells = [];
     activeSkill = null;
-    phase = 'selectUnit';
     selectedUnit.acted = true;
     checkGameEnd();
-    updateUI();
-    render();
+    if (phase !== 'gameOver') {
+      selectNextPlayerUnit(); // 自动选下一个未行动单位，减少手动点击
+    } else {
+      updateUI();
+      render();
+    }
   }
 
-  function applySkill(attacker, target, skill) {
+  function applySkill(attacker, gx, gy, skill) {
     if (skill.isHeal) {
+      const t = getUnitAt(gx, gy);
+      if (!t || t.team !== attacker.team) return; // 安全：仅治疗友方
       const healAmt = Math.abs(skill.dmg);
-      target.hp = Math.min(target.maxHp, target.hp + healAmt);
-      addLog(`${attacker.name} 对 ${target.name} 施放 ${skill.name}，回复 ${healAmt} HP`, 'heal');
-    } else {
-      target.hp -= skill.dmg;
-      addLog(`${attacker.name} 对 ${target.name} 施放 ${skill.name}，造成 ${skill.dmg} 伤害（剩余 ${Math.max(0, target.hp)} HP）`, 'damage');
-      if (skill.selfHeal) {
-        attacker.hp = Math.min(attacker.maxHp, attacker.hp + skill.selfHeal);
-        addLog(`${attacker.name} 汲取回复 ${skill.selfHeal} HP`, 'heal');
+      t.hp = Math.min(t.maxHp, t.hp + healAmt);
+      addLog(`${attacker.name} 对 ${t.name} 施放 ${skill.name}，回复 ${healAmt} HP`, 'heal');
+      skill.cd = skill.cooldown;
+      return;
+    }
+    // 眩晕（控制）：使敌方目标下个回合无法行动
+    if (skill.isStun) {
+      const t = getUnitAt(gx, gy);
+      if (!t || t.team === attacker.team) { skill.cd = 0; return; } // 安全兜底（正常路径由 handleSelectTarget 保证有效敌方目标）
+      t.stunned = true;
+      addLog(`${attacker.name} 对 ${t.name} 施放 ${skill.name}，目标下回合将被眩晕`, 'damage');
+      skill.cd = skill.cooldown;
+      return;
+    }
+    // 范围伤害 (AoE)：命中格周围 aoeRadius（曼哈顿）内所有敌方单位
+    if (skill.aoeRadius > 0) {
+      const hits = units.filter(u => u.hp > 0 && u.team !== attacker.team && cellDistPt(u.gx, u.gy, gx, gy) <= skill.aoeRadius);
+      if (hits.length === 0) {
+        addLog(`${attacker.name} 对 (${gx},${gy}) 施放 ${skill.name}，未命中任何敌方单位`, 'info');
+      } else {
+        hits.forEach(t => {
+          t.hp -= skill.dmg;
+          addLog(`${attacker.name} 的 ${skill.name} 波及 ${t.name}，造成 ${skill.dmg} 伤害（剩余 ${Math.max(0, t.hp)} HP）`, 'damage');
+        });
+        if (skill.selfHeal) {
+          attacker.hp = Math.min(attacker.maxHp, attacker.hp + skill.selfHeal);
+          addLog(`${attacker.name} 汲取回复 ${skill.selfHeal} HP`, 'heal');
+        }
       }
+      skill.cd = skill.cooldown;
+      return;
+    }
+    // 单体伤害
+    const t = getUnitAt(gx, gy);
+    if (!t) {
+      addLog(`${attacker.name} 对 (${gx},${gy}) 施放 ${skill.name}，无目标`, 'info');
+      skill.cd = skill.cooldown;
+      return;
+    }
+    t.hp -= skill.dmg;
+    addLog(`${attacker.name} 对 ${t.name} 施放 ${skill.name}，造成 ${skill.dmg} 伤害（剩余 ${Math.max(0, t.hp)} HP）`, 'damage');
+    if (skill.selfHeal) {
+      attacker.hp = Math.min(attacker.maxHp, attacker.hp + skill.selfHeal);
+      addLog(`${attacker.name} 汲取回复 ${skill.selfHeal} HP`, 'heal');
     }
     skill.cd = skill.cooldown;
   }
@@ -358,11 +409,17 @@ const Game = (() => {
     if (!selectedUnit || selectedUnit.acted) return;
     selectedUnit.acted = true;
     addLog(`${selectedUnit.name} 跳过行动`, 'info');
+    selectNextPlayerUnit(); // 自动选下一个未行动单位
+  }
+
+  // 自动选下一个未行动玩家单位，减少手动点击（手感优化）
+  function selectNextPlayerUnit() {
+    const next = units.find(u => u.team === 'player' && u.hp > 0 && !u.acted);
+    selectedUnit = next || null;
     moveHighlightCells = [];
     attackHighlightCells = [];
     activeSkill = null;
     phase = 'selectUnit';
-    selectedUnit = null;
     updateUI();
     render();
   }
@@ -391,7 +448,12 @@ const Game = (() => {
     enemies.forEach(e => {
       delay += 400;
       setTimeout(() => {
-        aiDecide(e);
+        if (e.stunned) {
+          e.stunned = false;
+          addLog(`${e.name} 被眩晕，跳过本回合行动`, 'info');
+        } else {
+          aiDecide(e);
+        }
         checkGameEnd();
         render();
         updateUI();
@@ -432,7 +494,7 @@ const Game = (() => {
       const inRange = targets.filter(t => cellDist(unit, t) <= skill.range);
       if (inRange.length > 0) {
         const target = inRange.sort((a, b) => a.hp - b.hp)[0];
-        applySkill(unit, target, skill);
+        applySkill(unit, target.gx, target.gy, skill);
         unit.acted = true;
         return;
       }
@@ -458,7 +520,7 @@ const Game = (() => {
       const inRange = targets.filter(t => cellDist(unit, t) <= skill.range);
       if (inRange.length > 0) {
         const target = inRange.sort((a, b) => a.hp - b.hp)[0];
-        applySkill(unit, target, skill);
+        applySkill(unit, target.gx, target.gy, skill);
         unit.acted = true;
         return;
       }
@@ -576,7 +638,7 @@ const Game = (() => {
     const hpFill = document.getElementById('hp-fill');
     const hpText = document.getElementById('hp-text');
     if (selectedUnit) {
-      detailEl.innerHTML = `<strong>${selectedUnit.name}</strong><br>团队: ${selectedUnit.team === 'player' ? '玩家' : '敌方'}<br>位置: (${selectedUnit.gx},${selectedUnit.gy})`;
+      detailEl.innerHTML = `<strong>${selectedUnit.name}</strong><br>团队: ${selectedUnit.team === 'player' ? '玩家' : '敌方'}<br>位置: (${selectedUnit.gx},${selectedUnit.gy})${selectedUnit.stunned ? '<br><span style="color:#e0a0ff">⚡ 眩晕中</span>' : ''}`;
       const ratio = Math.max(0, selectedUnit.hp / selectedUnit.maxHp) * 100;
       hpFill.style.width = ratio + '%';
       hpFill.className = 'hp-fill ' + (selectedUnit.team === 'player' ? 'player' : 'enemy');

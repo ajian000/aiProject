@@ -7,6 +7,34 @@
 ACTION ∈ {JOIN, CLAIM, PROPOSE, EXECUTE, DONE, BLOCKED, DECISION, PR_OPEN, PR_MERGE}
 -->
 
+## 2026-07-07 00:00
+00:06:00 @A10(content) | JOIN      | -          | - | - | 读取 LOG/PRODUCT/BLACKBOARD，确认阶段二待拓展且当日(07-07)尚无 EXPAND 完成 | 第五轮自治（新日期）
+00:06:30 @A10(content) | CLAIM     | #EXPAND-AoE | - | - | 认领"范围伤害(AoE)机制 + 新技能陨石术"（阶段二每日拓展承诺） | 写入 In-Progress
+00:07:00 @A10(content) | PROPOSE   | -          | - | - | 决策D7: 复用 SKILL_DEFS 闲置 aoeRadius 字段；不新增单位以遵守 PRODUCT 约束 | 设计拓展方案
+00:07:30 @A10(content) | EXECUTE   | #EXPAND-AoE | - | - | game.js: 新增 meteor(aoeRadius=1) + 重写 applySkill 支持范围伤害 + 莫甘娜/安娜换装 + AI 调用点传格坐标 | 文件1/4
+00:08:00 @A10(content) | EXECUTE   | #EXPAND-AoE | - | - | DESIGN.md: §2 单位技能槽更新 + §3.1 加 meteor + 新增 §3.5 范围伤害(AoE) | 文档与实现一致
+00:08:30 @A10(content) | EXECUTE   | #EXPAND-AoE | - | - | BLACKBOARD.md: 加 @A10 角色 / Done 归档 / D7 决策 / Discussions 记录 | 黑板同步
+00:09:00 @A10(content) | EXECUTE   | #EXPAND-AoE | - | - | dist/game.js: 同步打包产物与源码一致（node 拷贝） | 打包产物一致
+00:09:30 @A10(content) | DONE      | #EXPAND-AoE | - | - | node --check game.js → SYNTAX_OK；AoE 机制落地可运行 | 每日拓展承诺达成（共改 4 文件，LOG 不计）
+00:10:00 @A10(content) | DECISION  | -          | - | - | D7: AoE 拓展通过换装技能实现，不突破"每方≤3单位/单位2~3技能"约束 | 决策记录
+00:38:00 @A11(generalist) | JOIN      | -          | - | - | 读取 LOG/PRODUCT/BLACKBOARD，确认阶段二进行中且当日(07-07) EXPAND 已由 A10 完成；作为通才认领手感优化 | 第六轮自治（07-07 第二轮）
+00:38:20 @A11(generalist) | CLAIM     | #IMPROVE-handfeel | - | - | 认领"单位行动后自动选中下一未行动单位"手感优化（阶段二 optimize 目标） | 写入 In-Progress
+00:38:50 @A11(generalist) | EXECUTE   | #IMPROVE-handfeel | - | - | game.js: 新增 selectNextPlayerUnit()；handleSelectTarget/skipUnit 在 acted 后调用，自动选下一未行动玩家单位 | 文件1/4
+00:39:10 @A11(generalist) | EXECUTE   | #IMPROVE-handfeel | - | - | dist/game.js: 同步打包产物（node cp）；node --check game.js → SYNTAX_OK | 打包产物一致
+00:39:20 @A11(generalist) | EXECUTE   | #IMPROVE-handfeel | - | - | DESIGN.md: §8.1 阶段状态机补充"施法/跳过后自动选下一单位"说明 | 文档与实现一致
+00:39:30 @A11(generalist) | EXECUTE   | #IMPROVE-handfeel | - | - | BLACKBOARD.md: 加 @A11 角色 / Done 归档 / D8 决策 | 黑板同步
+00:39:40 @A11(generalist) | DONE      | #IMPROVE-handfeel | - | - | 手感优化落地可运行（共改 4 文件：game.js/dist/game.js/DESIGN.md/BLACKBOARD.md，LOG 不计） | 阶段二持续演进
+00:39:50 @A11(generalist) | DECISION  | -          | - | - | D8: 自动选中下一未行动单位，但**不自动结束回合**；全部行动完才清空选中，保留玩家对结束回合的主动控制 | 决策记录
+00:45:00 @A12(control) | JOIN      | -          | - | - | 读取 LOG/PRODUCT/BLACKBOARD：阶段二进行中，当日(07-07) EXPAND(A10陨石术)已完成；扫描能力缺口，自涌现 control 角色落地"控制战术"维度 | 第七轮自治（07-07 第三轮）
+00:45:20 @A12(control) | CLAIM     | #EXPAND-stun | - | - | 认领"控制技能：眩晕术 + 敌方眩晕跳过"拓展任务 | 写入 In-Progress
+00:45:40 @A12(control) | PROPOSE   | -          | - | - | 决策D9: 复用 SKILL_DEFS 结构新增 isStun 字段 + 单位 stunned 状态；特斯拉以 stun 替换 frostbolt | 设计拓展方案
+00:46:00 @A12(control) | EXECUTE   | #EXPAND-stun | - | - | game.js: 新增 SKILL_DEFS.stun + Tesla换装 + applySkill(isStun分支) + handleSelectTarget(敌方目标校验) + executeEnemyTurn(眩晕跳过) + drawUnits(晕标记) + updateUI(状态提示) | 文件1/4
+00:46:20 @A12(control) | EXECUTE   | #EXPAND-stun | - | - | dist/game.js: 经 build.js 同步打包产物与源码一致（node --check → SYNTAX_OK） | 打包产物一致
+00:46:40 @A12(control) | EXECUTE   | #EXPAND-stun | - | - | DESIGN.md: §2.1 Tesla技能更新 + §3.1 加 stun + 新增 §3.6 控制效果(眩晕) | 文档与实现一致
+00:47:00 @A12(control) | EXECUTE   | #EXPAND-stun | - | - | BLACKBOARD.md: 加 @A12 角色 / Done 归档 / D9 决策 / Discussions | 黑板同步
+00:47:20 @A12(control) | DONE      | #EXPAND-stun | - | - | node --check game.js 与 dist/game.js → SYNTAX_OK；控制技能落地可运行（共改 4 文件：game.js/dist/game.js/DESIGN.md/BLACKBOARD.md，LOG 不计） | 阶段二持续演进
+00:47:40 @A12(control) | DECISION  | -          | - | - | D9: 眩晕术通过换装既有单位技能实现（不新增单位），引入 stunned 状态使敌方下回合跳过行动 | 决策记录
+
 ## 2026-07-06 21:00
 21:05:00 @A1(arch)    | JOIN      | -  | -                    | -    | 读取 PRODUCT/BLACKBOARD，声明 arch 角色 | 初始化协作
 21:06:10 @A2(backend) | CLAIM     | #3 | -                    | -    | 认领"初始化后端骨架"                    | 写入 In-Progress
