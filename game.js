@@ -525,11 +525,24 @@ const Game = (() => {
   }
 
   // ---- 本地存档 (F6) ----
+  // 安全加固：对本地存档做结构校验与数值钳制，避免被篡改/损坏的 localStorage
+  // 导致战绩显示异常（如 "abc" / 负数 / NaN）。单机游戏不引入防作弊（无服务端），仅做格式校验。
+  function sanitizeSave(obj) {
+    const toCount = (v) => {
+      const n = Math.floor(Number(v));
+      return Number.isFinite(n) && n >= 0 ? n : 0;
+    };
+    return { wins: toCount(obj && obj.wins), losses: toCount(obj && obj.losses) };
+  }
+
   function loadSave() {
     try {
       const raw = localStorage.getItem('magicArenaSave');
-      if (raw) saveData = JSON.parse(raw);
-    } catch (e) { /* ignore */ }
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed && typeof parsed === 'object') saveData = sanitizeSave(parsed);
+      }
+    } catch (e) { /* ignore corrupt save */ }
     document.getElementById('win-count').textContent = saveData.wins;
     document.getElementById('lose-count').textContent = saveData.losses;
   }

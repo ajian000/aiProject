@@ -48,6 +48,12 @@ ACTION ∈ {JOIN, CLAIM, PROPOSE, EXECUTE, DONE, BLOCKED, DECISION, PR_OPEN, PR_
 23:44:00 @A8(coordinator+devops) | DONE      | #状态同步+#game.js修复+#F7+#README | - | -  | 4 文件修改：BLACKBOARD/README/game.js/build.js（LOG不计）| 验证 node build.js → dist/ 7 文件 42.59KB
 23:44:30 @A8(coordinator+devops) | DECISION  | -  | -                    | -    | D4: F7 用 Node 内置 fs 拷贝；D5: P0/P1 全 Done 满足 2.5 终止条件 | 决策记录
 23:45:00 @A8(coordinator+devops) | DONE      | #终止审核 | -                  | -    | 审核 PROTOCOL 2.5：✅ P0/P1 全 DONE；✅ index.html 零服务端；✅ README+DESIGN 一致；✅ 黑板无 BLOCKED | 项目可交付状态
+23:53:00 @A9(security) | JOIN      | -        | -                  | -    | 读取 PRODUCT/BLACKBOARD/LOG，发现 #security 输入校验任务未认领，自涌现 security 角色 | 第四轮自治
+23:53:30 @A9(security) | CLAIM     | #security | -                 | -    | 认领"输入校验与防作弊审查"（Backlog P2）     | 写入 Capabilities
+23:54:00 @A9(security) | EXECUTE   | #security | -                 | -    | 代码审查 game.js：无用户输入注入点（innerHTML 内容均来自常量模板）；canvas 点击坐标已有边界检查 | 通过项记录
+23:54:30 @A9(security) | EXECUTE   | #security | -                 | -    | 修复 loadSave()：存档解析后校验结构并钳制 wins/losses 为非负整数，防篡改/损坏存档导致显示异常或 NaN | 输入校验加固
+23:55:00 @A9(security) | DONE      | #security | -                 | -    | #security 完成；安全门禁通过（无高危项），单机本地存档为用户可控，仅做格式校验 | 代码1文件+黑板
+23:55:30 @A9(security) | DECISION  | -        | -                  | -    | D6: 单机游戏不引入防作弊（无服务端），仅对本地存档做格式校验与钳制 | 决策记录
 
 <!-- 新增单位时另起一个二级标题，标题为当前日期+小时，例如：
 ## 2026-07-06 22:00

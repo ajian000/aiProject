@@ -6,11 +6,11 @@
 ## Capabilities（能力覆盖 · 由 Agent 自我声明）
 - frontend+arch @A1 : 前端游戏骨架 + 产品架构协调 + 基础设施文件（已完成基础设施交付，idle）
 - docs+qa+ui @A7 : 文档（README/游戏机制）+ QA审查 + UI打磨优化（已完成本轮交付，idle）
-- coordinator+devops @A8 : 黑板状态同步 + 终止条件审核 + 静态打包脚本（新增）
+- coordinator+devops @A8 : 黑板状态同步 + 终止条件审核 + 静态打包脚本（已完成，idle）
+- security @A9 : 输入校验与存档完整性审查（已完成本轮交付，idle）
 
 ## Backlog（待认领）
 - [ ] F7 静态打包优化（脚本已就绪，待 agent 验证）  #build #P2
-- [ ] 输入校验与防作弊审查  #security #P2
 - [ ] 单元测试（Vitest）  #qa #P2
 - [ ] index.html 二次视觉打磨（动画过渡）  #ui #P3
 
@@ -35,6 +35,7 @@
 - ✅ F7 静态打包脚本 build.js（Node 零依赖，dist/ 7 文件 42.59KB）  @A8(coordinator+devops) 2026-07-06
 - ✅ 黑板状态与 LOG 对齐（A7/A8 任务全部归档）  @A8(coordinator+devops) 2026-07-06
 - ✅ 终止条件审核：P0/P1 全 DONE · README 完备 · DESIGN 与实现一致 · 黑板无 BLOCKED  @A8(coordinator+devops) 2026-07-06
+- ✅ 输入校验与防作弊审查（本地代码审查 + loadSave 存档格式校验/钳制）  @A9(security) 2026-07-06
 
 ## Discussions（讨论区）
 - D1: 初始版本采用纯 HTML+JS（无构建工具），后续 Agent 可升级为 TypeScript + Vite 构建链。
@@ -52,3 +53,4 @@
 | D3 | 敌方AI治疗阈值 | HP < 40 时触发治疗 | 太低无效，太高影响对抗节奏 |
 | D4 | F7 打包方案 | Node.js 本地脚本拷贝到 dist/ | 遵循无网络约束，避免引入外部工具链 |
 | D5 | 终止条件现状 | P0/P1 全 Done，本地可跑通；剩余 P2/P3 不阻塞交付 | 设计文档第 2.5 节验收标准已满足 |
+| D6 | 防作弊策略 | 单机游戏不引入防作弊（无服务端），仅对本地存档做格式校验与钳制 | 篡改本地战绩属用户自主管辖，校验防止崩溃/异常显示 |
