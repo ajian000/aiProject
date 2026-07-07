@@ -1,23 +1,23 @@
 // ============================================================
 // build.js — Magic Arena 静态打包脚本（F7 · 无网络依赖）
-// 用途：将 index.html / game.js / 文档拷贝到 dist/，作为可分发的静态站点
-// 用法：node build.js
-// 约束：零 npm install、零外网请求、纯 Node.js 内置 API
+// 位置：仓库根目录下的 magic-arena/ 子目录（游戏工程目录）
+// 用途：将游戏文件（index.html / game.js / DESIGN.md / README.md）拷贝到 dist/，作为可分发的静态站点
+// 用法：node build.js   （在 magic-arena/ 目录内运行）
+// 约束：零 npm install、零外网请求、纯 Node.js 内置 API；不拷贝根级控制文件（PRODUCT.md / PROTOCOL.md 等）
 // ============================================================
 
 const fs = require('fs');
 const path = require('path');
 
-const ROOT = __dirname;
+const ROOT = __dirname; // 即 magic-arena/ 目录
 const DIST = path.join(ROOT, 'dist');
 
+// 仅打包游戏运行所需的文件；根级控制文件（PRODUCT.md / BLACKBOARD.md / PROTOCOL.md / LOG.md）不进入 dist
 const FILES = [
   'index.html',
   'game.js',
   'README.md',
   'DESIGN.md',
-  'PRODUCT.md',
-  'PROTOCOL.md',
 ];
 
 function ensureDir(dir) {

@@ -1,12 +1,36 @@
 # Magic Arena — 魔法竞技场
 
 > 浏览器端单机回合制战术战斗游戏。操控法师小队，在 8×8 网格战场施放技能、策略对战。
+> 本目录（`magic-arena/`）为**游戏工程目录**；仓库根目录仅存放协作控制文件（见下）。
+
+## 仓库布局
+
+```
+仓库根 /
+├── AI自治多智能体项目设计.md   # 主规格 / PR 唯一输入（根文档）
+├── PRODUCT.md                  # 产品规格（Agent 每轮先读的根文档）
+├── BLACKBOARD.md               # 多 Agent 共享协作黑板
+├── PROTOCOL.md                 # 自治 Agent 协作协议
+├── LOG.md                      # 执行审计日志
+└── magic-arena/                # ← 本目录：游戏工程（所有代码/资源/产物在此）
+    ├── index.html              # 游戏界面（Canvas + UI 面板）
+    ├── game.js                 # 游戏核心逻辑（渲染/战斗/AI/存档）
+    ├── build.js                # 静态打包脚本（F7）
+    ├── DESIGN.md               # 游戏机制设计文档
+    ├── README.md               # 本文件
+    ├── data/                   # 数据驱动内容（units/skills/maps，可选）
+    └── dist/                   # 静态打包产物（node build.js 生成）
+```
+
+> ⚠️ **根目录卫生**：仓库根目录只允许上述 5 个控制/日志文件；任何游戏代码、资源、文档、临时产物都**必须**放在 `magic-arena/`（及其下层子目录），禁止在根目录随意新建文件。
 
 ## 快速开始
 
-**零依赖，打开即玩：**
+**零依赖，打开即玩（在 `magic-arena/` 目录内操作）：**
 
 ```bash
+cd magic-arena
+
 # 方式一：直接双击打开
 双击 index.html
 
@@ -96,12 +120,18 @@ node build.js
 ## 项目结构
 
 ```
-magic-arena/
-├── index.html          # 游戏界面（Canvas + UI 面板）
-├── game.js             # 游戏核心逻辑（渲染/战斗/AI/存档）
-├── PRODUCT.md          # 产品规格与验收标准
-├── DESIGN.md           # 游戏机制设计文档
-├── BLACKBOARD.md       # 多 Agent 共享协作黑板
-├── PROTOCOL.md         # 自治 Agent 协作协议
-└── LOG.md              # 执行审计日志
+仓库根 /
+├── AI自治多智能体项目设计.md   # 主规格 / PR 唯一输入（根文档）
+├── PRODUCT.md                  # 产品规格（Agent 每轮先读的根文档）
+├── BLACKBOARD.md               # 多 Agent 共享协作黑板
+├── PROTOCOL.md                 # 自治 Agent 协作协议
+├── LOG.md                      # 执行审计日志
+└── magic-arena/                # 游戏工程目录（本目录）
+    ├── index.html              # 游戏界面（Canvas + UI 面板）
+    ├── game.js                 # 游戏核心逻辑（渲染/战斗/AI/存档）
+    ├── build.js                # 静态打包脚本（F7）
+    ├── DESIGN.md               # 游戏机制设计文档
+    ├── README.md               # 本文件
+    ├── data/                   # 数据驱动内容（units/skills/maps，可选）
+    └── dist/                   # 静态打包产物（node build.js 生成）
 ```

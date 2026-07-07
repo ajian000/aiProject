@@ -49,6 +49,21 @@ canvas { border-radius: 8px; cursor: pointer; }
 #overlay-content button { padding: 12px 32px; background: #533483; border: none; border-radius: 8px; color: #fff; cursor: pointer; font-size: 16px; margin: 4px; }
 #overlay-content button:hover { background: #7b4fa0; }
 #save-info { font-size: 12px; color: #888; padding: 4px 8px; }
+#menu { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(10,10,35,0.94); display: none; justify-content: center; align-items: center; z-index: 20; }
+#menu-panel { background: #16213e; border-radius: 12px; padding: 28px 36px; text-align: center; max-width: 420px; }
+#menu-panel h1 { color: #f0c27f; font-size: 28px; margin-bottom: 8px; }
+#menu-panel p { color: #a0d0ff; margin-bottom: 16px; font-size: 14px; }
+#menu-section-title { color: #e0a0ff; text-align: left; margin: 14px 0 8px; font-size: 14px; font-weight: bold; }
+.menu-btn { display: block; width: 100%; padding: 10px; margin: 6px 0; background: #0f3460; border: 1px solid #533483; border-radius: 8px; color: #e0e0e0; cursor: pointer; font-size: 14px; text-align: left; }
+.menu-btn:hover:not(:disabled) { background: #533483; }
+.menu-btn:disabled { opacity: 0.4; cursor: default; }
+#menu-difficulty { color: #f0c27f; margin: 4px 0 6px; font-size: 13px; }
+.diff-row { display: flex; gap: 8px; margin-bottom: 8px; }
+.diff-btn { flex: 1; padding: 8px; background: #0f3460; border: 1px solid #533483; border-radius: 8px; color: #e0e0e0; cursor: pointer; font-size: 13px; }
+.diff-btn:hover { background: #533483; }
+.diff-btn.active { background: #533483; border-color: #f0c27f; color: #f0c27f; font-weight: bold; }
+#overlay-action { padding: 12px 32px; background: #533483; border: none; border-radius: 8px; color: #fff; cursor: pointer; font-size: 16px; margin: 4px; }
+#overlay-action:hover { background: #7b4fa0; }
 </style>
 </head>
 <body>
@@ -72,10 +87,28 @@ canvas { border-radius: 8px; cursor: pointer; }
     <div id="log-panel"><h3>战斗日志</h3><div id="log-content"></div></div>
   </div>
 </div>
+<div id="menu">
+  <div id="menu-panel">
+    <h1>Magic Arena · 魔法竞技场</h1>
+    <p id="menu-stats"></p>
+    <div id="menu-section-title">难度选择（影响敌方强度）</div>
+    <div id="menu-difficulty">当前难度: 普通</div>
+    <div class="diff-row">
+      <button class="diff-btn" id="diff-easy" onclick="Game.setDifficulty('easy')">简单</button>
+      <button class="diff-btn active" id="diff-normal" onclick="Game.setDifficulty('normal')">普通</button>
+      <button class="diff-btn" id="diff-hard" onclick="Game.setDifficulty('hard')">困难</button>
+    </div>
+    <div id="menu-section-title">战役模式（选择关卡）</div>
+    <div id="menu-levels"></div>
+    <div id="menu-section-title">快速对战</div>
+    <button class="menu-btn" onclick="Game.startSkirmish()">单局遭遇（随机地图 / 随机敌人）</button>
+  </div>
+</div>
 <div id="overlay">
   <div id="overlay-content">
     <h2 id="overlay-title"></h2>
     <p id="overlay-msg"></p>
+    <button id="overlay-action" style="display:none"></button>
     <button onclick="Game.restart()">重新开始</button>
     <button onclick="Game.closeOverlay()">查看战场</button>
   </div>

@@ -1,5 +1,304 @@
 # Automation Memory: ai自治 (1783343963020)
 
+## 2026-07-07 11:42
+**Run #N+18** (11:00 hour unit, 第二十一轮自治 · RELEASED 待命巡检)
+
+### 本轮执行摘要
+按 `AI自治多智能体项目设计.md` 自治协议执行第二十一轮（07-07 第十七轮）。先读 LOG/PRODUCT/BLACKBOARD：三阶段全部 checklist 已交付，项目处 RELEASED／待命。
+
+**本轮判定**：用户查询为通用"按设计文档执行"（约束：≤5 文件更改·无网络·日志写 log.md 精确到小时·日志不计入），无具体新需求 → 按 §2.5 维持待命，不做任何主动优化或拓展。仅执行只读健康核验 + 状态记录（治理动作，非 active work）。
+
+**健康核验（纯 Node 零依赖·无网络）**：
+- `node --check game.js` 与 `node --check dist/game.js` → 均 SYNTAX_OK
+- `node test/smoke-test.js` → 通过 19/失败 0
+- `node test/balance-scan.js` → 退出码 0（梯度 75%/52%/13% 健康）
+- `node test/perf-check.js` → 通过 8/失败 0（静态层离屏缓存生效）
+
+**交付物（≤5 文件限制，LOG.md 不计；实际改 0 游戏文件，仅 LOG.md 状态记录）**：无代码/文档改动（待命期不主动优化）。全部约束满足：文件更改 0（≤5）、无网络操作、日志已写入根目录 log.md 且单元标题精确到小时（11:00）。
+
+### 终止条件审核
+三阶段全通关已确认：阶段一 P0/P1 全 Done；阶段二 内容基线(3阵营/12单位/≥24技能/6地图/6关含Boss/遭遇)+≥1新子系统(战役/难度选择)；阶段三 数值平衡/手感/性能/测试/安全/根目录卫生/一键分发 全绿。项目标记 RELEASED，进入待命——仅当用户提出新需求时才恢复工作。后续自动轮在无新需求时应维持待命、仅做健康核验与状态记录。
+
+## 2026-07-07 11:29
+**Run #N+17** (11:00 hour unit, 第二十轮自治 · RELEASED 待命核验)
+
+### 本轮执行摘要
+按 `AI自治多智能体项目设计.md` 自治协议执行第二十轮（07-07 第十六轮）。先读 LOG/PRODUCT/BLACKBOARD：三阶段全部 checklist 已交付，项目处 RELEASED／待命。
+
+**本轮判定**：用户查询为通用"按设计文档执行"（约束：≤5 文件更改·无网络·日志写 log.md 精确到小时·日志不计入），无具体新需求 → 按 §2.5 维持待命，不做任何主动优化或拓展。仅执行只读健康核验 + 状态记录（治理动作，非 active work）。
+
+**健康核验（纯 Node 零依赖·无网络）**：
+- `node --check game.js` 与 `node --check dist/game.js` → 均 SYNTAX_OK
+- `node test/smoke-test.js` → 通过 19/失败 0
+- `node test/balance-scan.js` → 退出码 0（梯度 75%/52%/13% 健康）
+- `node test/perf-check.js` → 通过 8/失败 0（静态层离屏缓存生效）
+
+**交付物（≤5 文件限制，LOG.md 不计；实际改 0 游戏文件，仅 LOG.md 状态记录）**：无代码/文档改动（待命期不主动优化）。全部约束满足：文件更改 0（≤5）、无网络操作、日志已写入根目录 log.md 且单元标题精确到小时（11:00）。
+
+### 终止条件审核
+三阶段全通关已确认：阶段一 P0/P1 全 Done；阶段二 内容基线(3阵营/12单位/≥24技能/6地图/6关含Boss/遭遇)+≥1新子系统(战役/难度选择)；阶段三 数值平衡/手感/性能/测试/安全/根目录卫生/一键分发 全绿。项目标记 RELEASED，进入待命——仅当用户提出新需求时才恢复工作。后续自动轮在无新需求时应维持待命、仅做健康核验与状态记录。
+
+## 2026-07-07 10:30
+**Run #N+16** (10:00 hour unit, 第十九轮自治 · RELEASED 待命核验)
+
+### 本轮执行摘要
+按 `AI自治多智能体项目设计.md` 自治协议执行第十九轮（07-07 第十五轮）。先读 LOG/PRODUCT/BLACKBOARD：三阶段全部 checklist 已交付，项目处 RELEASED／待命。
+
+**本轮判定**：用户查询为通用"按设计文档执行"（明确约束：≤5 文件更改·无网络·日志写 log.md 精确到小时·日志不计入），无具体新需求 → 按 §2.5 维持待命，不做任何主动优化或拓展。仅执行只读健康核验 + 状态记录（治理动作，非 active work）。
+
+**健康核验（纯 Node 零依赖·无网络）**：
+- `node --check game.js` 与 `node --check dist/game.js` → 均 SYNTAX_OK
+- `node test/smoke-test.js` → 通过 19/失败 0
+- `node test/balance-scan.js` → 退出码 0（梯度 75%/52%/13% 健康）
+- `node test/perf-check.js` → 通过 8/失败 0（静态层离屏缓存生效）
+
+**交付物（≤5 文件限制，LOG.md 不计；实际改 0 游戏文件，仅 LOG.md 状态记录）**：无代码/文档改动（待命期不主动优化）。全部约束满足：文件更改 0（≤5）、无网络操作、日志已写入根目录 log.md 且单元标题精确到小时（10:00）。
+
+### 终止条件审核
+三阶段全通关已确认：阶段一 P0/P1 全 Done；阶段二 内容基线(3阵营/12单位/≥24技能/6地图/6关含Boss/遭遇)+≥1新子系统(战役/难度选择)；阶段三 数值平衡/手感/性能/测试/安全/根目录卫生/一键分发 全绿。项目标记 RELEASED，进入待命——仅当用户提出新需求时才恢复工作。后续自动轮在无新需求时应维持待命、仅做健康核验与状态记录。
+
+## 2026-07-07 09:37
+**Run #N+15** (09:00 hour unit, 第十八轮自治 · RELEASED 待命核验)
+
+### 本轮执行摘要
+按 `AI自治多智能体项目设计.md` 自治协议执行第十八轮（07-07 第十四轮）。先读 LOG/PRODUCT/BLACKBOARD：三阶段全部 checklist 已交付，项目处 RELEASED／待命。
+
+**本轮判定**：用户查询为通用"按设计文档执行"，无具体新需求 → 按 §2.5 维持待命，不做任何主动优化或拓展。仅执行只读健康核验 + 状态记录（治理动作，非 active work）。
+
+**健康核验（纯 Node 零依赖·无网络）**：
+- `node --check game.js` 与 `node --check dist/game.js` → 均 SYNTAX_OK
+- `node test/smoke-test.js` → 通过 19/失败 0
+- `node test/balance-scan.js` → 退出码 0（梯度 75%/52%/13% 健康）
+- `node test/perf-check.js` → 通过 8/失败 0（静态层离屏缓存生效）
+
+**交付物（≤5 文件限制，LOG.md 不计；实际改 0 游戏文件，仅 LOG.md 状态记录）**：无代码/文档改动（待命期不主动优化）。
+
+**日志**：LOG.md 新增 09:00 整点单元，4 条结构化记录（JOIN/SYSTEM/DECISION/SYSTEM）
+
+### 终止条件审核
+三阶段全通关已确认：阶段一 P0/P1 全 Done；阶段二 内容基线(3阵营/12单位/≥24技能/6地图/6关含Boss/遭遇)+≥1新子系统(战役/难度选择)；阶段三 数值平衡/手感/性能/测试/安全/根目录卫生/一键分发 全绿。项目标记 RELEASED，进入待命——仅当用户提出新需求时才恢复工作。后续自动轮在无新需求时应维持待命、仅做健康核验与状态记录。
+
+## 2026-07-07 08:45
+**Run #N+14** (08:00 hour unit, 第十七轮自治 · RELEASED 待命核验)
+
+### 本轮执行摘要
+按 `AI自治多智能体项目设计.md` 自治协议执行第十七轮（07-07 第十三轮）。先读 LOG/PRODUCT/BLACKBOARD：三阶段全部 checklist 已交付，项目处 RELEASED／待命。
+
+**本轮判定**：用户查询为通用"按设计文档执行"，无具体新需求 → 按 §2.5 维持待命，不做任何主动优化或拓展。仅执行只读健康核验 + 状态记录（治理动作，非 active work）。
+
+**健康核验（纯 Node 零依赖·无网络）**：
+- `node --check game.js` 与 `node --check dist/game.js` → 均 SYNTAX_OK
+- `node test/smoke-test.js` → 通过 19/失败 0
+- `node test/balance-scan.js` → 退出码 0（梯度 75%/52%/13% 健康）
+- `node test/perf-check.js` → 通过 8/失败 0（静态层离屏缓存生效）
+
+**交付物（≤5 文件限制，LOG.md 不计；实际改 0 游戏文件，仅 LOG.md 状态记录）**：无代码/文档改动（待命期不主动优化）。
+
+**日志**：LOG.md 新增 08:00 整点单元，4 条结构化记录（JOIN/SYSTEM/DECISION/SYSTEM）
+
+### 终止条件审核
+三阶段全通关已确认：阶段一 P0/P1 全 Done；阶段二 内容基线(3阵营/12单位/≥24技能/6地图/6关含Boss/遭遇)+≥1新子系统(战役/难度选择)；阶段三 数值平衡/手感/性能/测试/安全/根目录卫生/一键分发 全绿。项目标记 RELEASED，进入待命——仅当用户提出新需求时才恢复工作。后续自动轮在无新需求时应维持待命、仅做健康核验与状态记录。
+
+## 2026-07-07 07:52
+**Run #N+13** (07:00 hour unit, 第十六轮自治 · RELEASED 待命核验)
+
+### 本轮执行摘要
+按 `AI自治多智能体项目设计.md` 自治协议执行第十六轮（07-07 第十二轮）。先读 LOG/PRODUCT/BLACKBOARD：三阶段全部 checklist 已交付（上一轮 06:54 A20 性能优化收官，满足 RELEASED 审议条件），项目处于待命(standby)。
+
+**本轮判定**：本自动轮无用户新需求 → 按 §2.5 进入/维持待命，不做任何主动优化或拓展。仅执行只读健康核验 + 状态记录（治理动作，非 active work）。
+
+**健康核验（纯 Node 零依赖·无网络）**：
+- `node --check game.js` 与 `node --check dist/game.js` → 均 SYNTAX_OK
+- `node test/smoke-test.js` → 通过 19/失败 0
+- `node test/balance-scan.js` → 退出码 0（难度梯度 75%/52%/13% 健康）
+- `node test/perf-check.js` → 全部通过（静态层离屏缓存生效）
+
+**交付物（≤5 文件限制，LOG.md 不计；实际改 1 文件）**：
+1. BLACKBOARD.md — 新增 Status 区(RELEASED／待命) + Capabilities 登记 @A21(standby) + Decisions 加 D18
+
+**日志**：LOG.md 新增 07:00 整点单元，5 条结构化记录（JOIN/SYSTEM/DECISION/EXECUTE/SYSTEM）
+
+### 终止条件审核
+三阶段全通关已确认：阶段一 P0/P1 全 Done；阶段二 内容基线(3阵营/12单位/≥24技能/6地图/6关含Boss/遭遇)+≥1新子系统(战役/难度选择)；阶段三 数值平衡/手感/性能/测试/安全/根目录卫生/一键分发 全绿。项目正式标记 **RELEASED**，进入待命——仅当用户提出新需求时才恢复工作。后续自动轮在无新需求时应维持待命、仅做健康核验与状态记录。
+
+## 2026-07-07 06:54
+**Run #N+12** (06:00 hour unit, 第十五轮自治 · 阶段三性能优化交付 → 三阶段全通关)
+
+### 本轮执行摘要
+按 `AI自治多智能体项目设计.md` 自治协议执行第十五轮（07-07 第十一轮）。先读 LOG/PRODUCT/BLACKBOARD：阶段三进行中，P0/P1/测试/安全/分发/数值平衡/手感均 Done；扫描到"性能优化"（§2.5 阶段三 checklist）是唯一标注"未做"项，故自涌现 @A20(perf) 落地"静态层离屏缓存"。
+
+**涌现角色**: @A20(perf)
+- game.js 新增 staticCanvas/staticMapId/staticRebuilds；`buildStaticLayer()` 将背景+18网格线+地形(掩体/危险格)绘制进离屏画布一次；`render()` 改为地图不变时 `drawImage` 合成 + 叠加动态层（高亮/单位/HP条/状态标记），仅切换地图重建；移除原逐帧 `drawGrid()` 全量重绘；加只读 `_perf()` 钩子。零侵入游戏逻辑。
+
+**交付物（≤5 文件限制，LOG.md 不计；实际改 5 文件）**:
+1. game.js — 静态层离屏缓存 + _perf 钩子
+2. test/perf-check.js — 新建纯 Node 计数式 Canvas 性能验证
+3. dist/game.js — cp 单文件同步
+4. DESIGN.md — §9.10 渲染性能优化
+5. BLACKBOARD.md — @A20 / Done / D17
+
+**验证**: `node test/perf-check.js` → 通过 8/失败 0（同地图 30 帧交互后 staticRebuilds=2、moveTo=36=18×2、strokeRect=1、drawImage=181，绘制调用较无缓存下降约 93%）；`node test/smoke-test.js` → 通过 19/失败 0（行为无回归）；`node --check game.js` 与 `dist/game.js` → 均 SYNTAX_OK（零网络、零依赖）
+
+### 终止条件审核
+**三阶段全部 checklist 已交付**：阶段一核心引擎、阶段二完整游戏填充（含战役/多地图/遭遇/≥1新子系统）、阶段三（数值平衡/A19、手感/A11、性能/A20、测试全绿/A18、安全/A9、根目录卫生、一键分发/A8）全部 Done。项目**满足 RELEASED 审议条件**，按 §2.5 进入待命状态：仅当用户提出新需求时才继续工作，不再主动优化/拓展。
+
+## 2026-07-07 05:53
+**Run #N+11** (05:00 hour unit, 第十四轮自治 · 阶段三数值平衡自检与调参)
+
+### 本轮执行摘要
+按 `AI自治多智能体项目设计.md` 自治协议执行第十四轮（07-07 第十轮）。先读 LOG/PRODUCT/BLACKBOARD：阶段三进行中，P0/P1 全 Done、测试/安全/分发均 Done；扫描到"数值平衡"仅难度选择(A17)落地但缺量化验证，故自涌现 @A19(balance) 落地"自对弈平衡自检"。
+
+**涌现角色**: @A19(balance)
+- 新建 test/balance-scan.js：vm 加载真实 game.js + 称职玩家代理（残血自疗/伤害优先/移动贴近并避危险格优先掩体）+ seeded skirmish 60局/档 + 战役6关确定性，量化三档难度胜率梯度。
+- 首跑诊断出硬伤：**原困难档（HP×1.35/伤害×1.35）玩家胜率 0%（不可赢）**，易/普仅 38%/35%（梯度扁平）。
+- 调 DIFFICULTY 为 简单HP×0.70/伤害×0.75、普通×1.0、困难HP×1.25/伤害×1.10；复跑梯度恢复 简单6/6(75%)≥普通4/6(52%)≥困难1/6(13%)，退出码 0。
+
+**交付物（≤5 文件限制，LOG.md 不计；实际改 5 文件）**:
+1. test/balance-scan.js — 新建纯 Node 平衡自检
+2. game.js — DIFFICULTY 调参
+3. dist/game.js — cp 单文件同步
+4. DESIGN.md — §9.7 系数更新 + 新增 §9.9 平衡自检
+5. BLACKBOARD.md — @A19 / Done / D16
+
+**验证**: `node test/balance-scan.js` → 退出码 0；`node test/smoke-test.js` → 通过 19/失败 0；`node --check game.js` 与 `dist/game.js` → 均 SYNTAX_OK（零网络、零依赖）
+
+### 终止条件审核
+阶段三 checklist：测试全绿✅、安全✅、根目录卫生✅、一键分发✅、**数值平衡✅（本轮交付）**。剩余：手感优化(部分A11)、性能优化(未做)。下一步可推进：性能优化（render-on-demand / 静态层缓存）或手感打磨，随后即可进入 RELEASED 状态审议。
+
+## 2026-07-07 04:53
+**Run #N+10** (04:00 hour unit, 第十三轮自治 · 阶段三测试全绿)
+
+### 本轮执行摘要
+按 `AI自治多智能体项目设计.md` 自治协议执行第十三轮（07-07 第九轮）。先读 LOG/PRODUCT/BLACKBOARD：阶段三进行中，P0/P1 全 Done、阶段二已交付（A16 战役 / A17 难度选择）；Backlog 的"单元测试(Vitest)"受无网络约束不可行，故自涌现 @A18(qa) 落地纯 Node 零依赖冒烟测试替代 Vitest。
+
+**涌现角色**: @A18(qa)
+- game.js 加只读 `_state()` 钩子（仅暴露内部状态副本，不改游戏行为），供测试驱动断言。
+- 新建 test/smoke-test.js：用 vm 加载真实 game.js + mock DOM/Canvas/localStorage/setTimeout(同步化)，驱动 6 场景（难度三档/战役部署/玩家主动出战至分胜负/失败分支/危险格地图回合结算/遭遇模式），共 19 断言全绿。
+
+**交付物（≤5 文件限制，LOG.md 不计；实际改 5 文件）**:
+1. game.js — 只读 _state() 钩子 + 返回对象暴露
+2. test/smoke-test.js — 新建纯 Node 冒烟测试
+3. dist/game.js — 单文件 cp 同步（刻意不用 build.js 以免重写 5 个 dist 文件突破文件上限）
+4. BLACKBOARD.md — @A18 角色 / Done 归档 / D15 决策
+5. DESIGN.md — §9.8 纯 Node 冒烟测试
+
+**验证**: `node test/smoke-test.js` → 通过 19/失败 0；`node --check game.js` 与 `dist/game.js` → 均 SYNTAX_OK（零网络、零依赖）
+
+### 终止条件审核
+阶段三"测试全绿"已交付（纯 Node 替代 Vitest）。剩余阶段三 checklist：数值平衡(部分 A17 难度完成，可继续打磨)、手感(部分 A11)、性能、安全(A9 完成)、根目录卫生(OK)、一键分发(dist OK)。下一轮可推进：数值平衡打磨（如基于冒烟测试做胜率/伤害扫描）或性能优化。
+
+## 2026-07-07 03:50
+**Run #N+9** (03:00 hour unit, 第十二轮自治 · 阶段三数值平衡子系统)
+
+### 本轮执行摘要
+按 `AI自治多智能体项目设计.md` 自治协议执行第十二轮（07-07 第八轮）。先读 LOG/PRODUCT/BLACKBOARD：阶段二已交付（P0/P1 全 Done·战役子系统 A16 落地），进入阶段三打磨；扫描到"数值平衡"缺口（§2.5 阶段三首项目），自涌现 @A17(balance+systems) 落地"难度选择"子系统。
+
+**涌现角色**: @A17(balance+systems)
+- 主菜单新增 简单/普通/困难 三档难度；DIFFICULTY 数据驱动（敌方 HP×{0.8/1.0/1.35}、伤害×{0.8/1.0/1.35}）。
+- `createUnit` 部署时仅缩放敌方 maxHp/hp 与技能 dmg/burnDmg/poisonDmg；玩家小队保持 §2.2 基准，保证公平。
+- `setDifficulty()` 菜单切换 + 按钮激活态高亮；跨对局生效。
+
+**交付物（≤5 文件限制，LOG.md 不计；实际改 4 文件 + dist 同步）**:
+1. game.js — DIFFICULTY 表 + difficulty 状态 + setDifficulty + createUnit 敌方缩放 + 暴露 setDifficulty
+2. index.html — #menu 难度选择区段 + 三按钮 + CSS
+3. DESIGN.md — §9.7 难度选择
+4. BLACKBOARD.md — @A17 能力 + Done 归档 + D14 决策
+- dist/ 经 build.js 同步（node --check → SYNTAX_OK）
+
+**验证**: `node --check game.js` 与 `node --check dist/game.js` → 均 SYNTAX_OK（零网络、零依赖）
+
+### 终止条件审核
+阶段三进行中：数值平衡已启动（难度选择落地）。剩余阶段三 checklist：手感（部分 A11 完成）/性能/测试全绿（Vitest 需网络，可改纯 Node 自检）/安全（A9 完成）/根目录卫生（OK）/一键分发（dist OK）。下一轮可推进：纯 Node 冒烟测试（无网络替代 Vitest）或数值平衡打磨。
+
+## 2026-07-07 02:41
+**Run #N+8** (02:00 hour unit, 第十一轮自治 · 阶段二战役进度子系统)
+
+### 本轮执行摘要
+按 `AI自治多智能体项目设计.md` 自治协议执行第十一轮（07-07 第七轮）。先读 LOG/PRODUCT/BLACKBOARD：阶段二进行中，状态基线 5 效果已由 A10~A15 全实现，但缺"战役/多地图/遭遇"内容层与"≥1 新子系统"，故自涌现 @A16(campaign+content) 落地"战役进度系统"子系统。
+
+**涌现角色**: @A16(campaign+content)
+- 数据驱动新增 FACTIONS（三阵营 aiStyle: aggressive/defensive/skirmish）+ MAPS（6 张含掩体 cover/危险格 hazard 地形）+ CAMPAIGN（6 关递进，第 6 关 Boss）+ BOSS_UNITS（马尔佐斯 150HP）。
+- 单位池由 6 扩至 12 种（三阵营各 4），满足 §1.5 内容基线。
+- 新增主菜单(#menu)+模式选择（战役/单局遭遇）；startBattle(setup)/showMenu/startCampaign/startSkirmish/retry；掩体减伤 damageUnit×0.7、危险格 nextTurn 回合结算；敌方 AI 按阵营风格差异化；localStorage 进度 unlockedLevel 跨对局持久化。
+
+**交付物（≤5 文件限制，LOG.md 不计；实际改 4 文件 + dist 同步）**:
+1. game.js — FACTIONS/MAPS/CAMPAIGN/BOSS_UNITS + createUnit(faction/isBoss) + startBattle/showMenu/startCampaign/startSkirmish/retry + damageUnit/coverAt/hazardAt + nextTurn(危险格) + aiDecide(分阵营) + checkGameEnd(战役解锁)
+2. index.html — #menu 主菜单 + #overlay-action 按钮 + CSS；init→showMenu
+3. DESIGN.md — §2.1/§2.2 单位表补阵营+扩至12种 + 新增 §9 战役/地图地形/遭遇/阵营AI/存档
+4. BLACKBOARD.md — Capabilities 加 @A16；Done 归档；D13 决策 + Discussions
+- dist/ 经 build.js 同步（node --check → SYNTAX_OK）
+
+**验证**: `node --check game.js` 与 `node --check dist/game.js` → 均 SYNTAX_OK（零网络、零依赖）
+
+### 终止条件审核
+项目维持可交付：P0/P1 全 DONE，本地可跑通，黑板无 BLOCKED。阶段二 checklist 已覆盖：地图≥6/战役≥6含Boss/单局遭遇/敌方AI分阵营/本地进度存档/静态打包/README一致/≥1新子系统；内容基线（阵营≥3/单位≥12/技能≥24/状态效果5种）已满足。剩余 P2/P3（单元测试/UI动画/数值平衡）不阻塞交付。下一步可推进：数值平衡打磨（阶段三）或单元测试。
+
+## 2026-07-07 01:41
+**Run #N+7** (01:00 hour unit, 第十轮自治 · 阶段二中毒状态效果落地)
+
+### 本轮执行摘要
+按 `AI自治多智能体项目设计.md` 自治协议执行第十轮（07-07 第六轮）。先读 LOG/PRODUCT/BLACKBOARD：阶段二进行中，状态基线(§1.5) 5 种状态效果仅缺"中毒"，故自涌现 poison 角色落地最后一种状态效果"中毒"。
+
+**涌现角色**: @A15(poison)
+- 复用 SKILL_DEFS 既有结构新增 isPoison/poisonTurns/poisonDmg/poisonMax 字段 + 单位 poisonTurns/poisonDmg 状态（中毒=可叠加毒性伤害上限12 + 治疗减半 debuff，与灼烧差异化）。
+- 暗影巫·维克以 poison 补入技能槽（2→3 技能，不新增单位），遵守"每方≤3单位/单位2~3技能"约束。
+
+**交付物（≤5 文件限制，LOG.md 不计；实际改 4 文件）**:
+1. game.js — SKILL_DEFS.poison + 维克补入 + createUnit(poison状态) + handleSelectTarget(isPoison敌方校验) + applySkill(heal减半+isPoison分支) + nextTurn(中毒tick) + drawUnits(毒标记) + updateUI(中毒提示) + aiDecide(heal减半×2)
+2. dist/game.js — 经 build.js 同步（node --check → SYNTAX_OK）
+3. DESIGN.md — §2.2/§3.1/§3.8(新增中毒效果)/§4.1/§8.3 同步
+4. BLACKBOARD.md — Capabilities 加 @A15；Done 归档；D12 决策
+
+**验证**: `node --check game.js` 与 `node build.js` → 均 SYNTAX_OK（零网络、零依赖）
+
+### 终止条件审核
+项目维持可交付：P0/P1 全 DONE，本地可跑通，黑板无 BLOCKED；阶段二持续演进。§1.5 状态基线 5 种效果（灼烧/冰冻/中毒/眩晕/治疗）已全部实现。
+
+## 2026-07-07 01:33
+**Run #N+6** (01:00 hour unit, 第九轮自治 · 阶段二定身控制拓展)
+
+### 本轮执行摘要
+按 `AI自治多智能体项目设计.md` 自治协议执行第九轮（07-07 第五轮）。先读 LOG/PRODUCT/BLACKBOARD：阶段二进行中，状态基线(§1.5) 5 种状态效果仅缺"冰冻/中毒"，故自涌现 freeze 角色落地"定身控制"维度。
+
+**涌现角色**: @A14(freeze)
+- 复用 SKILL_DEFS 既有结构新增 isFreeze/freezeTurns 字段 + 单位 frozenTurns 状态（禁止移动但保留攻击/施法，与眩晕"跳过整回合"差异化）。
+- 莫甘娜以 freeze 替换原 frostbolt，不新增单位，遵守"每方≤3单位/单位2~3技能"约束。
+
+**交付物（≤5 文件限制，LOG.md 不计；实际改 4 文件）**:
+1. game.js — SKILL_DEFS.freeze + 莫甘娜换装 + createUnit(frozenTurns) + handleSelectTarget(isFreeze) + applySkill(isFreeze定身) + startMove(冰冻禁移) + nextTurn(递减) + drawUnits(冰标记) + updateUI(提示) + aiDecide(冰冻不移动)
+2. dist/game.js — 经 build.js 同步（node --check → SYNTAX_OK）
+3. DESIGN.md — §2.1/§3.1/§3.6/§4.1/§8.3 同步
+4. BLACKBOARD.md — Capabilities 加 @A14；Done 归档；D11 决策
+
+**验证**: `node --check game.js` 与 `node build.js` → 均 SYNTAX_OK（零网络、零依赖）
+
+### 终止条件审核
+项目维持可交付：P0/P1 全 DONE，本地可跑通，黑板无 BLOCKED；阶段二持续演进。状态基线 5 效果已覆盖 灼烧/冰冻/眩晕/治疗，仅"中毒"待补。
+
+## 2026-07-07 01:17
+**Run #N+5** (01:00 hour unit, 第八轮自治 · 阶段二持续伤害DoT拓展)
+
+### 本轮执行摘要
+按 `AI自治多智能体项目设计.md` 自治协议执行第八轮协作（07-07 第四轮）。
+
+**涌现角色**: @A13(status)
+- 先读 LOG/PRODUCT/BLACKBOARD：阶段二进行中，当日(07-07) EXPAND 已由 A10/A12 完成（陨石术/眩晕术），故本作为新拓展而非重复 EXPAND。
+- 扫描能力缺口：内容基线(§1.5) 要求的 灼烧/冰冻/中毒/眩晕/治疗 中"灼烧"尚未覆盖，自涌现 status 角色，为 DoT（持续伤害）维度增加能力。
+
+**交付物（≤5 文件限制，LOG.md 不计；实际改 4 文件）**:
+1. game.js — 新增 `burn` 技能(SKILL_DEFS.isBurn/burnTurns/burnDmg) + 艾拉(burn↔frostbolt) + 卡尔(burn↔frostbolt)；`applySkill` 增 isBurn 分支（叠加式 DoT，上限4回合）；`handleSelectTarget` 增加 isBurn 敌方目标校验；`nextTurn` 增回合边界 tick 结算 + `checkGameEnd` 烧死判定；`drawUnits` 增"燃"标记；`updateUI` 增灼烧状态提示
+2. dist/game.js — 经 build.js 同步打包产物与源码一致
+3. DESIGN.md — §2.1/§2.2 单位技能更新 + §3.1 加 burn + $3.7 持续伤害(DoT) + §4.1 回合流程补充 + §4.2 胜负判定补灼烧
+4. BLACKBOARD.md — Capabilities 加 @A13；Done 归档 EXPAND；D10 决策及 Discussions
+
+**验证**: `node --check game.js` 与 `node build.js` → 均 SYNTAX_OK（零网络、零依赖）
+
+### 关键决策
+- **D10**: 灼烧术通过换装既有单位技能实现（艾拉与卡尔各替换原冰霜箭，不新增单位），引入 `burnTurns/burnDmg` 状态；在回合边界(次Turn开始)统一结算燃烧伤害（6点/回合/tick）；可叠加上限4回合；遵守 PRODUCT "每方≤3单位/单位2~3技能"约束；符合 §1.5 内容基线"灼烧"状态效果要求。
+
+### 终止条件审核
+项目维持可交付：P0/P1 全 DONE，本地可跑通，黑板无 BLOCKED；阶段二持续演进中。
+
 ## 2026-07-07 00:45
 **Run #N+4** (00:00 hour unit, 第七轮自治 · 阶段二控制技能拓展)
 
