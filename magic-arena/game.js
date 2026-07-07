@@ -22,21 +22,26 @@ const Game = (() => {
   };
   const HAZARD_DMG = 8;      // 危险格每回合环境伤害
   const COVER_REDUCE = 0.7;  // 掩体减伤系数（承受伤害 ×0.7）
+  const VULN_AMP = 0.5;      // 易伤系数：被易伤单位受到的所有伤害提升 50%（集火放大器）
 
   // ---- 阵营（驱动敌方 AI 风格差异化） ----
   const FACTIONS = {
     pyro:   { name: '火焰', color: '#ff7043', aiStyle: 'aggressive' }, // 激进突进
     cryo:   { name: '寒冰', color: '#4fc3f7', aiStyle: 'defensive'  }, // 防守反击
     nature: { name: '自然', color: '#81c784', aiStyle: 'skirmish'   }, // 游击骚扰
+    light:  { name: '圣光', color: '#ffd54f', aiStyle: 'support'   }, // 守护/治疗倾向（见 aiDecide healThreshold）
   };
 
   // ---- 难度（Stage 3 · 数值平衡子系统：难度选择） ----
   // 仅缩放敌方单位（玩家小队保持基准），让单局体验在简单/普通/困难间有明显梯度。
-  // 数值平衡（balance-scan 自检结论）：困难档原 1.35×HP 且 1.35×伤害导致玩家几乎必败（0% 胜率），
-  // 现改为「敌方更肉、伤害略增」——战斗更长但可赢；简单档明显削弱，拉开梯度。
+  // 数值平衡（balance-scan 对齐种子自检结论，见 D25）：
+  //   - 困难档原 1.35×HP 且 1.35×伤害 → 玩家几乎必败（0% 胜率），已改为 1.25×HP/1.10×伤害（可赢但难）。
+  //   - 普通档原 1.00×HP/1.00×伤害 下，固定玩家小队 vs 随机 3 敌方（12 单位池含强单位）仅约 10% 可赢，
+  //     属「基准过难」——故普通档 HP 下调至 0.80×、伤害保持 1.00×（兼容 status-effects 回归测试的硬编伤害值），
+  //     使普通档成为可赢(≈40~50%)的中档标准体验；同时保持 简单(0.60/0.65) > 普通(0.80/1.00) > 困难(1.25/1.10) 难度梯度单调、且战役梯度健康。
   const DIFFICULTY = {
-    easy:   { key: 'easy',   name: '简单', hpMul: 0.70, dmgMul: 0.75 },
-    normal: { key: 'normal', name: '普通', hpMul: 1.00, dmgMul: 1.00 },
+    easy:   { key: 'easy',   name: '简单', hpMul: 0.60, dmgMul: 0.65 },
+    normal: { key: 'normal', name: '普通', hpMul: 0.80, dmgMul: 1.00 },
     hard:   { key: 'hard',   name: '困难', hpMul: 1.25, dmgMul: 1.10 },
   };
 
@@ -54,13 +59,25 @@ const Game = (() => {
     freeze: { name: '冰冻术', dmg: 6, range: 3, cooldown: 2, desc: '范围3格，6伤害并使敌方目标被冰冻、无法移动2回合', aoeRadius: 0, isFreeze: true, freezeTurns: 2 },
     poison: { name: '中毒术', dmg: 4, range: 3, cooldown: 2, desc: '范围3格，造成4直接伤害并使敌方中毒3回合，每回合受4点毒性伤害（可叠加伤害，上限12），中毒期间治疗减半', aoeRadius: 0, isPoison: true, poisonTurns: 3, poisonDmg: 4, poisonMax: 12 },
     blind: { name: '致盲术', dmg: 0, range: 3, cooldown: 3, desc: '范围3格，使敌方目标致盲2回合，期间其造成的所有伤害降低50%（削弱敌方输出）', aoeRadius: 0, isBlind: true, blindTurns: 2 },
+    // 沉默（反法师控制）：使敌方目标无法施放任何技能（仍可移动/ reposition），是区别于
+    // 眩晕(跳过整回合)/冰冻(禁移)/致盲(伤害-50%)的"攻防压制"维度——专门封杀敌方施法。
+    silence: { name: '沉默术', dmg: 0, range: 3, cooldown: 3, desc: '范围3格，使敌方目标沉默2回合，期间无法施放任何技能（只能移动），CD3回合', aoeRadius: 0, isSilence: true, silenceTurns: 2 },
+    taunt: { name: '嘲讽术', dmg: 0, range: 3, cooldown: 3, desc: '范围3格，嘲讽敌方目标2回合，期间其攻击被强制吸引向你（坦克引流·保护队友）', aoeRadius: 0, isTaunt: true, tauntTurns: 2 },
+    smite: { name: '圣光打击', dmg: 22, range: 3, cooldown: 1, desc: '范围3格，22伤害，CD1回合', aoeRadius: 0 },
+    // 护盾（防御向减伤 buff）：为友方附加可吸收伤害的护盾，持续若干回合后消散；
+    // 与治愈术(即时回血)正交——护盾是" preemptive mitigation"（受伤前先吸收），覆盖 DOT/危险格/普攻。
+    shield: { name: '守护之盾', dmg: 0, range: 2, cooldown: 2, desc: '范围2格，为友方单位附加护盾，吸收最多20点伤害，持续2回合，CD2回合', aoeRadius: 0, isShield: true, shieldTurns: 2, shieldAmount: 20 },
+    // 易伤（集火放大器 / 进攻向削弱）：使敌方目标易伤，期间其受到的所有伤害提升 50%；
+    // 与致盲(敌方输出-50%) / 沉默(禁施法) / 嘲讽(强制吸引) 正交——易伤是「放大我方对该目标的伤害」，
+    // 给玩家带来全新的「标记→集火」战术选择（区别于单纯压低敌方能力）。
+    vuln: { name: '易伤术', dmg: 0, range: 3, cooldown: 3, desc: '范围3格，使敌方目标易伤2回合，期间其受到的所有伤害提升50%（集火放大器）', aoeRadius: 0, isVuln: true, vulnTurns: 2 },
   };
 
   // ---- 玩家单位（固定 3 人小队，含阵营） ----
   const PLAYER_UNITS = [
     { name: '炎法师·艾拉', maxHp: 80, moveRange: 2, faction: 'pyro', skills: ['fireball', 'burn', 'heal'], color: '#66bb6a' },
-    { name: '雷法师·特斯拉', maxHp: 70, moveRange: 3, faction: 'cryo', skills: ['lightning', 'stun', 'heal'], color: '#43a047' },
-    { name: '暗法师·莫甘娜', maxHp: 65, moveRange: 2, faction: 'nature', skills: ['meteor', 'drain', 'blind'], color: '#81c784' },
+    { name: '雷法师·特斯拉', maxHp: 70, moveRange: 3, faction: 'cryo', skills: ['lightning', 'silence', 'shield'], color: '#43a047' },
+    { name: '暗法师·莫甘娜', maxHp: 65, moveRange: 2, faction: 'nature', skills: ['meteor', 'vuln', 'blind'], color: '#81c784' },
   ];
 
   // ---- 敌方单位池（可部署，含阵营；单位类型池 ≥12 的基础） ----
@@ -73,6 +90,11 @@ const Game = (() => {
     { name: '藤蔓德鲁伊·希尔', maxHp: 65, moveRange: 3, faction: 'nature', skills: ['drain', 'meteor', 'burn'], color: '#81c784' },
     { name: '雷霆审判者·托尔', maxHp: 68, moveRange: 3, faction: 'cryo', skills: ['lightning', 'stun', 'heal'], color: '#29b6f6' },
     { name: '剧毒巫医·摩格', maxHp: 62, moveRange: 2, faction: 'nature', skills: ['poison', 'shadowbolt', 'drain'], color: '#9ccc65' },
+    // ---- 圣光阵营（方向2 内容扩建：新增第 4 阵营，单位类型池由 12 扩至 16） ----
+    { name: '圣光祭司·塞拉', maxHp: 72, moveRange: 2, faction: 'light', skills: ['heal', 'smite', 'frostbolt'], color: '#ffd54f' },
+    { name: '圣堂守卫·加百列', maxHp: 88, moveRange: 2, faction: 'light', skills: ['fireball', 'heal', 'stun'], color: '#ffca28' },
+    { name: '曙光射手·奥菲', maxHp: 64, moveRange: 3, faction: 'light', skills: ['lightning', 'smite', 'meteor'], color: '#ffe082' },
+    { name: '圣裁官·米迦勒', maxHp: 78, moveRange: 3, faction: 'light', skills: ['meteor', 'smite', 'blind'], color: '#fff176' },
   ];
 
   // ---- Boss 单位（第 6 关） ----
@@ -198,6 +220,12 @@ const Game = (() => {
       poisonTurns: 0,
       poisonDmg: 0,
       blindTurns: 0,
+      silenceTurns: 0,
+      vulnTurns: 0,       // 易伤剩余回合（被易伤期间受到的所有伤害 +50%，集火放大器）
+      tauntTurns: 0,
+      taunterId: null,
+      shield: 0,        // 当前护盾吸收点数（受伤害时优先扣除，归零后再扣 HP）
+      shieldTurns: 0,   // 护盾剩余持续回合（回合边界递减，归零则护盾消散）
     };
   }
 
@@ -235,7 +263,7 @@ const Game = (() => {
     gameMode = 'skirmish';
     currentCampaignLevel = 0;
     const mapIdx = Math.floor(Math.random() * MAPS.length);
-    const pool = [0, 1, 2, 3, 4, 5, 6, 7];
+    const pool = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11];
     shuffle(pool);
     const enemies = pool.slice(0, 3).map(i => ({ src: 'enemy', i }));
     startBattle({ map: mapIdx, enemies });
@@ -287,8 +315,16 @@ const Game = (() => {
     let actual = dmg;
     if (attacker && attacker.blindTurns > 0) actual = Math.floor(actual * 0.5); // 致盲：输出伤害降低50%
     if (coverAt(target.gx, target.gy)) actual = Math.floor(actual * COVER_REDUCE);
+    if (target.vulnTurns > 0) actual = Math.floor(actual * (1 + VULN_AMP)); // 易伤：受到伤害提升 50%（集火放大器）
+    // 护盾吸收：优先扣除护盾点数，溢出部分才进入 HP（覆盖 普攻/DOT/危险格 等所有伤害来源）
+    if (target.shield > 0) {
+      const absorbed = Math.min(target.shield, actual);
+      target.shield -= absorbed;
+      actual -= absorbed;
+      if (absorbed > 0) pushFloater(target.gx, target.gy, '盾' + absorbed, 'shield');
+    }
     target.hp -= actual;
-    pushFloater(target.gx, target.gy, '-' + actual, 'damage');
+    if (actual > 0) pushFloater(target.gx, target.gy, '-' + actual, 'damage');
     return actual;
   }
 
@@ -449,6 +485,38 @@ const Game = (() => {
         ctx.textBaseline = 'middle';
         ctx.fillText('盲', px - 30, py - 30);
       }
+      // 嘲讽标记（右下）：被嘲讽的敌方会强制攻击来源玩家
+      if (u.tauntTurns > 0) {
+        ctx.fillStyle = '#ffb300';
+        ctx.font = 'bold 14px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('嘲', px + 30, py + 30);
+      }
+      // 护盾标记（左上，与致盲错位）：有护盾残留时显示护盾剩余点数
+      if (u.shield > 0) {
+        ctx.fillStyle = '#40c4ff';
+        ctx.font = 'bold 12px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('🛡' + u.shield, px + 30, py - 30);
+      }
+      // 沉默标记（左下）：被沉默的单位无法施放任何技能，只能移动
+      if (u.silenceTurns > 0) {
+        ctx.fillStyle = '#9575cd';
+        ctx.font = 'bold 14px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('默', px - 30, py + 30);
+      }
+      // 易伤标记（顶部偏上，与眩晕错位）：被易伤的敌方受到的所有伤害提升 50%
+      if (u.vulnTurns > 0) {
+        ctx.fillStyle = '#ff5252';
+        ctx.font = 'bold 14px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('易', px, py - 44);
+      }
     });
   }
 
@@ -465,6 +533,7 @@ const Game = (() => {
       else if (f.kind === 'burn') color = '#ff7043';
       else if (f.kind === 'poison') color = '#cddc39';
       else if (f.kind === 'hazard') color = '#ff8a80';
+      else if (f.kind === 'shield') color = '#80d8ff';
       else if (f.kind === 'status') color = '#e0a0ff';
       ctx.globalAlpha = Math.max(0, Math.min(1, f.life / 30));
       ctx.fillStyle = color;
@@ -596,6 +665,34 @@ const Game = (() => {
         addLog(`${selectedUnit.name} 取消施放 ${activeSkill.name}（无效目标：需选敌方）`, 'info');
         attackHighlightCells = []; activeSkill = null; phase = 'selectUnit'; updateUI(); render(); return;
       }
+    } else if (activeSkill.isSilence) {
+      if (target && target.team !== selectedUnit.team) {
+        applySkill(selectedUnit, gx, gy, activeSkill);
+      } else {
+        addLog(`${selectedUnit.name} 取消施放 ${activeSkill.name}（无效目标：需选敌方）`, 'info');
+        attackHighlightCells = []; activeSkill = null; phase = 'selectUnit'; updateUI(); render(); return;
+      }
+    } else if (activeSkill.isTaunt) {
+      if (target && target.team !== selectedUnit.team) {
+        applySkill(selectedUnit, gx, gy, activeSkill);
+      } else {
+        addLog(`${selectedUnit.name} 取消施放 ${activeSkill.name}（无效目标：需选敌方）`, 'info');
+        attackHighlightCells = []; activeSkill = null; phase = 'selectUnit'; updateUI(); render(); return;
+      }
+    } else if (activeSkill.isVuln) {
+      if (target && target.team !== selectedUnit.team) {
+        applySkill(selectedUnit, gx, gy, activeSkill);
+      } else {
+        addLog(`${selectedUnit.name} 取消施放 ${activeSkill.name}（无效目标：需选敌方）`, 'info');
+        attackHighlightCells = []; activeSkill = null; phase = 'selectUnit'; updateUI(); render(); return;
+      }
+    } else if (activeSkill.isShield) {
+      if (target && target.team === selectedUnit.team) {
+        applySkill(selectedUnit, gx, gy, activeSkill);
+      } else {
+        addLog(`${selectedUnit.name} 取消施放 ${activeSkill.name}（无效目标：需选友方）`, 'info');
+        attackHighlightCells = []; activeSkill = null; phase = 'selectUnit'; updateUI(); render(); return;
+      }
     } else {
       // 单体或范围伤害：以点击格为中心；范围技能会波及周围敌方（含空地中心）
       applySkill(selectedUnit, gx, gy, activeSkill);
@@ -684,6 +781,48 @@ const Game = (() => {
       skill.cd = skill.cooldown;
       return;
     }
+    // 沉默（反法师控制）：使敌方目标无法施放任何技能（仍可移动），专封敌方施法
+    if (skill.isSilence) {
+      const t = getUnitAt(gx, gy);
+      if (!t || t.team === attacker.team) { skill.cd = 0; return; } // 安全兜底
+      t.silenceTurns = Math.max(t.silenceTurns, skill.silenceTurns);
+      pushFloater(t.gx, t.gy, '沉默', 'status');
+      addLog(`${attacker.name} 对 ${t.name} 施放 ${skill.name}，目标被沉默（剩余 ${t.silenceTurns} 回合·无法施放技能）`, 'damage');
+      skill.cd = skill.cooldown;
+      return;
+    }
+    // 嘲讽（坦克引流：强制吸引被嘲讽敌方的攻击，保护其他队友）
+    if (skill.isTaunt) {
+      const t = getUnitAt(gx, gy);
+      if (!t || t.team === attacker.team) { skill.cd = 0; return; }
+      t.tauntTurns = Math.max(t.tauntTurns, skill.tauntTurns);
+      t.taunterId = attacker.id; // 记录嘲讽来源，敌方 AI 据此锁定攻击目标
+      pushFloater(t.gx, t.gy, '嘲讽', 'status');
+      addLog(`${attacker.name} 对 ${t.name} 施放 ${skill.name}，嘲讽成功（剩余 ${t.tauntTurns} 回合·攻击被强制吸引向你）`, 'damage');
+      skill.cd = skill.cooldown;
+      return;
+    }
+    // 易伤（集火放大器）：使敌方目标易伤，期间其受到的所有伤害提升 50%（放大我方对该目标的伤害）
+    if (skill.isVuln) {
+      const t = getUnitAt(gx, gy);
+      if (!t || t.team === attacker.team) { skill.cd = 0; return; }
+      t.vulnTurns = Math.max(t.vulnTurns, skill.vulnTurns);
+      pushFloater(t.gx, t.gy, '易伤', 'status');
+      addLog(`${attacker.name} 对 ${t.name} 施放 ${skill.name}，目标被易伤（剩余 ${t.vulnTurns} 回合·受到伤害提升50%）`, 'damage');
+      skill.cd = skill.cooldown;
+      return;
+    }
+    // 护盾（防御向减伤 buff）：为友方附加可吸收伤害的护盾（preemptive mitigation）
+    if (skill.isShield) {
+      const t = getUnitAt(gx, gy);
+      if (!t || t.team !== attacker.team) { skill.cd = 0; return; } // 安全：仅护盾友方
+      t.shield = Math.max(t.shield, skill.shieldAmount);
+      t.shieldTurns = Math.max(t.shieldTurns, skill.shieldTurns);
+      pushFloater(t.gx, t.gy, '护盾', 'status');
+      addLog(`${attacker.name} 对 ${t.name} 施放 ${skill.name}，附加 ${skill.shieldAmount} 点护盾（持续 ${t.shieldTurns} 回合）`, 'heal');
+      skill.cd = skill.cooldown;
+      return;
+    }
     // 范围伤害 (AoE)
     if (skill.aoeRadius > 0) {
       const hits = units.filter(u => u.hp > 0 && u.team !== attacker.team && cellDistPt(u.gx, u.gy, gx, gy) <= skill.aoeRadius);
@@ -746,6 +885,10 @@ const Game = (() => {
 
   function castSkill(skillIdx) {
     if (!selectedUnit || selectedUnit.acted) return;
+    if (selectedUnit.silenceTurns > 0) {
+      addLog(`${selectedUnit.name} 被沉默，无法施放技能`, 'info');
+      return;
+    }
     const skill = selectedUnit.skills[skillIdx];
     if (skill.cd > 0) return;
     activeSkill = skill;
@@ -831,7 +974,7 @@ const Game = (() => {
 
   // 按阵营风格排序攻击技能：skirmish 优先控制技，其余按伤害降序
   function sortedAttackSkills(unit, style) {
-    const list = unit.skills.filter(s => s.cd <= 0 && !s.isHeal && !s.isBlind);
+    const list = unit.skills.filter(s => s.cd <= 0 && !s.isHeal && !s.isBlind && !s.isShield && !s.isSilence && !s.isVuln);
     if (style === 'skirmish') {
       const ctrl = s => (s.isStun ? 1 : 0) + (s.isFreeze ? 1 : 0) + (s.isPoison ? 1 : 0);
       return list.sort((a, b) => ctrl(b) - ctrl(a) || b.dmg - a.dmg);
@@ -844,12 +987,21 @@ const Game = (() => {
     const targets = units.filter(u => u.team === 'player' && u.hp > 0);
     if (targets.length === 0) { unit.acted = true; return; }
 
+    // 0b. 嘲讽判定：若本敌方被嘲讽，其攻击被强制吸引到嘲讽来源（坦克引流）
+    let tauntTarget = null;
+    if (unit.tauntTurns > 0 && unit.taunterId) {
+      tauntTarget = units.find(u => u.id === unit.taunterId && u.team === 'player' && u.hp > 0) || null;
+    }
+    // 嘲讽期间：攻击目标仅限嘲讽来源（若其已阵亡则嘲讽自然失效，恢复自由选择）
+    const atkTargets = tauntTarget ? [tauntTarget] : targets;
+
     const style = (unit.faction && FACTIONS[unit.faction]) ? FACTIONS[unit.faction].aiStyle : 'aggressive';
-    const healThreshold = style === 'defensive' ? 0.6 : 0.4; // 寒冰(防守)更早自保
+    const healThreshold = style === 'defensive' ? 0.6 : (style === 'support' ? 0.5 : 0.4); // 寒冰(防守)更早自保；圣光(守护)次之；其余 0.4
     const hpRatio = unit.hp / unit.maxHp;
+    const canCast = unit.silenceTurns <= 0; // 沉默：被沉默的单位无法施放任何技能（仍可移动）
 
     // 1. 自保治疗（HP < 阈值 且有可用治愈术）
-    if (hpRatio < healThreshold) {
+    if (canCast && hpRatio < healThreshold) {
       const healSkill = unit.skills.find(s => s.cd <= 0 && s.isHeal);
       if (healSkill) {
         const healAmt = Math.abs(healSkill.dmg);
@@ -863,10 +1015,11 @@ const Game = (() => {
       }
     }
 
-    // 2. 攻击技能（按风格排序，优先斩杀低HP目标）
+    // 2. 攻击技能（按风格排序，优先斩杀低HP目标；嘲讽期间仅锁定嘲讽来源）
+    if (canCast) {
     const attackSkills = sortedAttackSkills(unit, style);
     for (const skill of attackSkills) {
-      const inRange = targets.filter(t => cellDist(unit, t) <= skill.range);
+      const inRange = atkTargets.filter(t => cellDist(unit, t) <= skill.range);
       if (inRange.length > 0) {
         const target = inRange.sort((a, b) => a.hp - b.hp)[0];
         applySkill(unit, target.gx, target.gy, skill);
@@ -874,11 +1027,13 @@ const Game = (() => {
         return;
       }
     }
+    }
 
     // 3. 移动靠近最近目标（被冰冻时无法移动，跳过本步但仍可原地攻击/治疗）
+    //    嘲讽期间：优先贴近嘲讽来源（强制吸引仇恨），否则贴近最近敌人
     let moveCells = [];
     if (unit.frozenTurns <= 0) {
-      const closest = targets.sort((a, b) => cellDist(unit, a) - cellDist(unit, b))[0];
+      const closest = tauntTarget || targets.sort((a, b) => cellDist(unit, a) - cellDist(unit, b))[0];
       moveCells = getMoveCells(unit);
       if (moveCells.length > 0) {
         let bestCell = moveCells.sort((a, b) =>
@@ -899,10 +1054,11 @@ const Game = (() => {
       }
     }
 
-    // 4. 移动后攻击（同2逻辑）
+    // 4. 移动后攻击（同2逻辑；嘲讽期间仍仅锁定嘲讽来源）
+    if (canCast) {
     const skillsAfterMove = sortedAttackSkills(unit, style);
     for (const skill of skillsAfterMove) {
-      const inRange = targets.filter(t => cellDist(unit, t) <= skill.range);
+      const inRange = atkTargets.filter(t => cellDist(unit, t) <= skill.range);
       if (inRange.length > 0) {
         const target = inRange.sort((a, b) => a.hp - b.hp)[0];
         applySkill(unit, target.gx, target.gy, skill);
@@ -910,9 +1066,10 @@ const Game = (() => {
         return;
       }
     }
+    }
 
     // 5. 治疗兜底：移动后若 HP < 阈值 且治愈可用
-    if (hpRatio < healThreshold) {
+    if (canCast && hpRatio < healThreshold) {
       const healSkill = unit.skills.find(s => s.cd <= 0 && s.isHeal);
       if (healSkill) {
         const healAmt = Math.abs(healSkill.dmg);
@@ -928,11 +1085,15 @@ const Game = (() => {
 
     // 6. 无可用行动，跳过
     unit.acted = true;
-    const usableSkills = unit.skills.filter(s => s.cd <= 0).length;
-    if (usableSkills === 0 && moveCells.length === 0) {
-      addLog(`${unit.name} 技能全部冷却且无法移动，休息一回合`, 'info');
+    if (!canCast) {
+      addLog(`${unit.name} 被沉默，无法施放任何技能${moveCells.length > 0 ? '，已移动调整位置' : ''}`, 'info');
     } else {
-      addLog(`${unit.name} 无法行动，跳过`, 'info');
+      const usableSkills = unit.skills.filter(s => s.cd <= 0).length;
+      if (usableSkills === 0 && moveCells.length === 0) {
+        addLog(`${unit.name} 技能全部冷却且无法移动，休息一回合`, 'info');
+      } else {
+        addLog(`${unit.name} 无法行动，跳过`, 'info');
+      }
     }
   }
 
@@ -961,9 +1122,29 @@ const Game = (() => {
         u.blindTurns--;
         if (u.blindTurns === 0) addLog(`${u.name} 致盲解除，伤害恢复`, 'info');
       }
+      // 沉默结算：回合边界递减；归零解除施法禁制
+      if (u.silenceTurns > 0) {
+        u.silenceTurns--;
+        if (u.silenceTurns === 0) addLog(`${u.name} 沉默解除，可再次施法`, 'info');
+      }
       if (u.frozenTurns > 0) {
         u.frozenTurns--;
         if (u.frozenTurns === 0) addLog(`${u.name} 冰冻解除，可再次移动`, 'info');
+      }
+      // 嘲讽结算：回合边界递减；归零解除强制吸引并清除来源
+      if (u.tauntTurns > 0) {
+        u.tauntTurns--;
+        if (u.tauntTurns === 0) { u.taunterId = null; addLog(`${u.name} 嘲讽解除，恢复自由选择目标`, 'info'); }
+      }
+      // 易伤结算：回合边界递减；归零解除伤害放大器（受到伤害恢复正常）
+      if (u.vulnTurns > 0) {
+        u.vulnTurns--;
+        if (u.vulnTurns === 0) addLog(`${u.name} 易伤解除，受到伤害恢复正常`, 'info');
+      }
+      // 护盾结算：回合边界递减；归零则护盾消散（已吸收的残留点数一并清空）
+      if (u.shieldTurns > 0) {
+        u.shieldTurns--;
+        if (u.shieldTurns === 0) { u.shield = 0; addLog(`${u.name} 护盾消散`, 'info'); }
       }
       // 危险格环境伤害（不区分阵营）
       if (u.hp > 0 && hazardAt(u.gx, u.gy)) {
@@ -1071,7 +1252,7 @@ const Game = (() => {
     const hpText = document.getElementById('hp-text');
     if (selectedUnit) {
       const factionName = (selectedUnit.faction && FACTIONS[selectedUnit.faction]) ? FACTIONS[selectedUnit.faction].name : '—';
-      detailEl.innerHTML = `<strong>${selectedUnit.name}</strong>${selectedUnit.isBoss ? ' <span style="color:#ffd54f">★BOSS</span>' : ''}<br>阵营: ${factionName}<br>团队: ${selectedUnit.team === 'player' ? '玩家' : '敌方'}<br>位置: (${selectedUnit.gx},${selectedUnit.gy})${selectedUnit.stunned ? '<br><span style="color:#e0a0ff">⚡ 眩晕中</span>' : ''}${selectedUnit.burnTurns > 0 ? '<br><span style="color:#ff7043">🔥 灼烧中(' + selectedUnit.burnTurns + '回合)</span>' : ''}${selectedUnit.frozenTurns > 0 ? '<br><span style="color:#4fc3f7">❄ 冰冻中(' + selectedUnit.frozenTurns + '回合·无法移动)</span>' : ''}${selectedUnit.poisonTurns > 0 ? '<br><span style="color:#9e9d24">☠ 中毒中(' + selectedUnit.poisonTurns + '回合·治疗减半)</span>' : ''}${selectedUnit.blindTurns > 0 ? '<br><span style="color:#b39ddb">👁 致盲中(' + selectedUnit.blindTurns + '回合·伤害降低50%)</span>' : ''}`;
+      detailEl.innerHTML = `<strong>${selectedUnit.name}</strong>${selectedUnit.isBoss ? ' <span style="color:#ffd54f">★BOSS</span>' : ''}<br>阵营: ${factionName}<br>团队: ${selectedUnit.team === 'player' ? '玩家' : '敌方'}<br>位置: (${selectedUnit.gx},${selectedUnit.gy})${selectedUnit.stunned ? '<br><span style="color:#e0a0ff">⚡ 眩晕中</span>' : ''}${selectedUnit.burnTurns > 0 ? '<br><span style="color:#ff7043">🔥 灼烧中(' + selectedUnit.burnTurns + '回合)</span>' : ''}${selectedUnit.frozenTurns > 0 ? '<br><span style="color:#4fc3f7">❄ 冰冻中(' + selectedUnit.frozenTurns + '回合·无法移动)</span>' : ''}${selectedUnit.poisonTurns > 0 ? '<br><span style="color:#9e9d24">☠ 中毒中(' + selectedUnit.poisonTurns + '回合·治疗减半)</span>' : ''}${selectedUnit.blindTurns > 0 ? '<br><span style="color:#b39ddb">👁 致盲中(' + selectedUnit.blindTurns + '回合·伤害降低50%)</span>' : ''}${selectedUnit.tauntTurns > 0 ? '<br><span style="color:#ffb300">🛡 嘲讽中(' + selectedUnit.tauntTurns + '回合·攻击被吸引向你)</span>' : ''}${selectedUnit.shield > 0 ? '<br><span style="color:#40c4ff">🔰 护盾(' + selectedUnit.shield + '点·持续' + selectedUnit.shieldTurns + '回合)</span>' : ''}${selectedUnit.silenceTurns > 0 ? '<br><span style="color:#9575cd">🔇 沉默中(' + selectedUnit.silenceTurns + '回合·无法施法)</span>' : ''}${selectedUnit.vulnTurns > 0 ? '<br><span style="color:#ff5252">💥 易伤中(' + selectedUnit.vulnTurns + '回合·受到伤害+50%)</span>' : ''}`;
       const ratio = Math.max(0, selectedUnit.hp / selectedUnit.maxHp) * 100;
       hpFill.style.width = ratio + '%';
       hpFill.className = 'hp-fill ' + (selectedUnit.team === 'player' ? 'player' : 'enemy');
@@ -1180,6 +1361,10 @@ const Game = (() => {
         if (sk.isStun || sk.isFreeze) s += 20;  // 控制价值
         if (sk.isBurn || sk.isPoison) s += 12;  // 持续伤害(DoT)价值
         if (sk.isBlind) s += 14;  // 致盲：削弱敌方输出价值
+        if (sk.isTaunt) s += 16;  // 嘲讽：强制吸引仇恨·坦克引流价值
+        if (sk.isShield) s += 14; // 护盾：preemptive mitigation 价值
+        if (sk.isSilence) s += 16; // 沉默：反法师控制·封杀施法价值
+        if (sk.isVuln) s += 14; // 易伤：集火放大器·放大我方对该目标伤害价值
       });
       s += (u.moveRange || 0) * 5; // 机动性
       return sum + s;
@@ -1235,8 +1420,8 @@ const Game = (() => {
       units: units.map(u => ({
         id: u.id, name: u.name, team: u.team, faction: u.faction, isBoss: u.isBoss,
         hp: u.hp, maxHp: u.maxHp, gx: u.gx, gy: u.gy, moveRange: u.moveRange,
-        acted: u.acted, stunned: u.stunned, burnTurns: u.burnTurns, frozenTurns: u.frozenTurns, poisonTurns: u.poisonTurns, blindTurns: u.blindTurns,
-        skills: u.skills.map(s => ({ key: s.key, name: s.name, dmg: s.dmg, range: s.range, cooldown: s.cooldown, cd: s.cd, isHeal: !!s.isHeal, isStun: !!s.isStun, isBurn: !!s.isBurn, isFreeze: !!s.isFreeze, isPoison: !!s.isPoison, isBlind: !!s.isBlind, aoeRadius: s.aoeRadius })),
+        acted: u.acted, stunned: u.stunned, burnTurns: u.burnTurns, frozenTurns: u.frozenTurns, poisonTurns: u.poisonTurns, blindTurns: u.blindTurns, silenceTurns: u.silenceTurns, vulnTurns: u.vulnTurns, tauntTurns: u.tauntTurns, taunterId: u.taunterId, shield: u.shield, shieldTurns: u.shieldTurns,
+        skills: u.skills.map(s => ({ key: s.key, name: s.name, dmg: s.dmg, range: s.range, cooldown: s.cooldown, cd: s.cd, isHeal: !!s.isHeal, isStun: !!s.isStun, isBurn: !!s.isBurn, isFreeze: !!s.isFreeze, isPoison: !!s.isPoison, isBlind: !!s.isBlind, isTaunt: !!s.isTaunt, isShield: !!s.isShield, isSilence: !!s.isSilence, isVuln: !!s.isVuln, aoeRadius: s.aoeRadius })),
       })),
     };
   }

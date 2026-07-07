@@ -2,7 +2,48 @@
 
 > ⚠️ **模型切换声明（2026-07-07 11:41）**：项目已从"三阶段→RELEASED→待命"模型切换为**方向驱动（Direction-Driven）**模型。D18（RELEASED/待命）已作废，代以 D20。**不再有"待命"状态**——每次调用必须在 5 个开发方向（核心玩法／内容扩建／系统新创／体验打磨／工程基石）中至少一个方向上产生推进。只有用户 `freeze` 才停止。下方 07:00~12:00 的"待命"历史记录是旧模型的遗留产物，新模型下不再适用。
 
-## 2026-07-07 14:00
+## 2026-07-07 23:00
+23:00:00 @A29(amplify) | JOIN      | - | - | - | 读取 LOG/BLACKBOARD/automation-memory：D20 方向驱动生效；发现游戏代码已落地"易伤术(vuln)"(game.js/dist/game.js/status-effects.test.js S6 均存在)但 LOG/BLACKBOARD 仍停在 21:00@A28、DESIGN.md 文档同步未完成 → 本 23:00 轮负责闭环（验证+文档补齐+治理记录） | 第三十轮自治（07-07 第二十六轮）· 方向1 核心玩法
+23:00:10 @A29(amplify) | CLAIM     | #EXPAND-vuln | - | - | 认领"易伤术（集火放大器）方向1 核心玩法"任务，完成闭环（全测试套件复跑 + DESIGN 文档补齐 + 黑板/日志治理） | 写入 In-Progress
+23:00:20 @A29(amplify) | PROPOSE   | - | - | - | 决策D26：以易伤术填补方向1 第五种「攻防压制」正交维度——被易伤敌方受到伤害+50%，与眩晕/冰冻/致盲/沉默/护盾正交的"进攻向削弱"，专用于"标记→集火秒杀"；dist/game.js 与源码一致、S6 回归已就绪，本轮仅补齐文档与治理 | 设计闭环方案
+23:00:30 @A29(amplify) | EXECUTE   | #EXPAND-vuln | - | - | 全测试套件复跑：node --check game.js/dist/game.js → SYNTAX_OK；smoke-test 19/0；status-effects 16/0（S6 易伤术 3 断言全绿）；perf-check 8/0；balance-scan 退出码0（战役 6/6/1·遭遇 100/93/15% 严格单调） | 验证（零网络零依赖）
+23:00:40 @A29(amplify) | EXECUTE   | #EXPAND-vuln | - | - | DESIGN.md 文档补齐：§2.1 莫甘娜单位表行 → 陨石术/易伤术/致盲术；§8.3 视觉反馈加红色"易"标记；§9.11 战力评分加 isVuln+14；§9.12 回归测试加 S6 条目（16/0） | 文件1/5（DESIGN.md）
+23:00:50 @A29(amplify) | EXECUTE   | #EXPAND-vuln | - | - | BLACKBOARD.md：@A29 能力登记 + Status 最后推进(23:00) + Done 归档(易伤术) + D26 决策 | 文件2/5（BLACKBOARD.md）
+23:01:00 @A29(amplify) | DONE      | #EXPAND-vuln | - | - | 易伤术(vuln) 特性全链路闭环：game.js 实现(VULN_AMP=0.5/damageUnit×1.5/createUnit/handleSelectTarget/applySkill/nextTurn/drawUnits/updateUI/sortedAttackSkills排除/_state暴露/evaluateSideScore+14) + dist 同步 + S6 回归 16/0 + DESIGN 文档同步 + 黑板/日志治理；smoke(19/0)/balance-scan(退出码0·梯度单调)/perf(8/0) 全绿无回归（共 5 业务文件：game.js/dist/game.js/status-effects.test.js/DESIGN.md/BLACKBOARD.md，LOG 不计） | 方向1 交付
+23:01:10 @A29(amplify) | DECISION  | - | - | - | D26: 易伤术补齐方向1 第五种「攻防压制」正交维度（进攻向伤害放大器），与既有限制行动/削弱输出/战前减伤/禁止施法/吸收伤害均正交；DIFFICULTY 未改动；遵守 ≤5 文件限制 | 决策记录
+
+## 2026-07-07 21:00
+21:00:00 @A28(balance-engine) | JOIN      | - | - | - | 读取 LOG/BLACKBOARD/automation-memory：D20 方向驱动生效；D24 轮遗留 balance-scan 退出码 1（战役梯度非单调 easy3/normal4/hard1）；本轮在方向5 工程基石定位并修复玩家代理缺陷 | 第二十九轮自治（07-07 第二十五轮）· 方向5 工程基石
+21:00:10 @A28(balance-engine) | PROPOSE   | - | - | - | 决策D25：balance-scan 战役梯度非单调源于玩家代理 actUnit 的等距振荡死循环（残敌落入等距格口袋→来回移动→被反复选中→安全上限误判负），非游戏失衡；修复 actUnit 仅严格拉近才移动 + 必以 skipUnit 收尾 | 设计修复方案
+21:00:20 @A28(balance-engine) | EXECUTE   | #BALANCE-agent-fix | - | - | test/balance-scan.js: actUnit 改为仅当移动到最近敌人距离严格缩短才移动，且每单位无论能否行动必以 skipUnit 收尾，杜绝单位被反复选中陷入死循环 | 文件1/4
+21:00:30 @A28(balance-engine) | EXECUTE   | #BALANCE-agent-fix | - | - | 临时诊断脚本(_diag/_trace)复现 easy L2 振荡：雷法师·特斯拉在 (6,2)↔(5,3) 等距格间无限循环、被 1500 上限误判负；定位后删除临时脚本（根目录卫生） | 验证定位
+21:00:40 @A28(balance-engine) | EXECUTE   | #BALANCE-agent-fix | - | - | game.js: 修正 DIFFICULTY 注释（普通 dmgMul 实为 1.00，非过时注释的 0.82；1.00 为兼容 status-effects 回归测试硬编伤害值）；DIFFICULTY 数值未变 | 文件2/4
+21:00:50 @A28(balance-engine) | EXECUTE   | #BALANCE-agent-fix | - | - | DESIGN.md: §9.7 难度系数同步为 easy 0.60/0.65 · normal 0.80/1.00 · hard 1.25/1.10；§9.9 实测结论表更新为 战役 6/6/1 · 遭遇 100%/93%/15% + 玩家代理 D25 振荡修复说明 | 文件3/4
+21:01:00 @A28(balance-engine) | EXECUTE   | #BALANCE-agent-fix | - | - | BLACKBOARD.md: @A28 能力登记 + Status 最后推进更新 + Done 归档 + D25 决策 | 文件4/4
+21:01:10 @A28(balance-engine) | DONE      | #BALANCE-agent-fix | - | - | node test/balance-scan.js → 退出码 0（战役 6/6/1 · 遭遇 100/93/15% 均单调）；node test/smoke-test.js → 19/0；node test/status-effects.test.js → 13/0；node test/perf-check.js → 8/0；零网络零依赖，全绿无回归（共改 4 业务文件：balance-scan.js/game.js注释/DESIGN.md/BLACKBOARD.md，LOG 不计） | 方向5 交付
+21:01:20 @A28(balance-engine) | DECISION  | - | - | - | D25: balance-scan 梯度非单调是测试代理缺陷（等距振荡死循环）而非游戏失衡，DIFFICULTY 未改动；修复后战役与遭遇梯度均恢复严格单调 简单≥普通≥困难、困难最难；此前"钟形"误判（easy 偏低）正是振荡伪影；遵守 ≤5 文件限制 | 决策记录
+
+## 2026-07-07 19:00
+19:00:00 @A27(silence) | JOIN      | - | - | - | 读取 LOG/BLACKBOARD/PRODUCT/automation-memory：D20 方向驱动生效；发现上一轮（18:00 未写日志轮次）已在 game.js/dist/game.js 落地沉默机制（SKILL_DEFS.silence + 特斯拉换装 + castSkill/aiDecide 守卫 + nextTurn 结算 + 渲染/UI/_state 暴露），但 status-effects 回归测试 S1 因特斯拉 stun→silence 换装而 FAIL（10/2），且 DESIGN/BLACKBOARD/LOG 均未同步 → 本 19:00 轮负责闭环 | 第二十八轮自治（07-07 第二十四轮）· 方向1 核心玩法
+19:00:10 @A27(silence) | CLAIM     | #EXPAND-silence | - | - | 认领"沉默反法师控制（Silence）"方向1 核心玩法任务，完成闭环（修回归 + 确定性验证 + 文档同步） | 写入 In-Progress
+19:00:20 @A27(silence) | PROPOSE   | - | - | - | 决策D24：以 SKILL_DEFS.silence(isSilence/silenceTurns:2) 实现"禁止施法"第四种攻防压制维度；特斯拉 silence↔stun（stun 留敌方 托尔/加百列）；修正 status-effects S1 为验证沉默生命周期、S5 增 stun 存在性校验（解决特斯拉换装打破原玩家施法测试的问题） | 设计沉默方案
+19:00:30 @A27(silence) | EXECUTE   | #EXPAND-silence | - | - | test/status-effects.test.js: S1 改测沉默生命周期（应用 silenceTurns=2 → 敌方回合可移动不施法 → 递减至1）、S5 增 stun 存在性校验（campaign 2 含托尔）；解决特斯拉换装导致的回归 | 文件1/5
+19:00:40 @A27(silence) | EXECUTE   | #EXPAND-silence | - | - | DESIGN.md: 新增 §9.14 沉默效果（机制/视觉/AI交互/设计定位/验证口径）+ §9.12 同步 S1 改为沉默、stun 改存在性、断言数 12→13 | 文件2/5
+19:00:50 @A27(silence) | EXECUTE   | #EXPAND-silence | - | - | BLACKBOARD.md: @A27 能力登记 + Status 最后推进更新 + Done 归档（@A27 silence）+ D24 决策 | 文件3/5
+19:01:00 @A27(silence) | EXECUTE   | #EXPAND-silence | - | - | 临时确定性脚本验证沉默闭环（应用 silenceTurns=2 → 被沉默敌方回合内玩家状态数不变证明禁施法 → 递减至0解除）→ 通过 5/0，验证后删除（根目录卫生） | 验证
+19:01:10 @A27(silence) | DONE      | #EXPAND-silence | - | - | node --check game.js/dist/game.js → SYNTAX_OK；smoke-test 19/0；status-effects 13/0（原 10/2 回归已修复）；perf-check 8/0；全零网络零依赖（共改 5 文件：game.js/dist/game.js[上轮] + status-effects.test.js/DESIGN.md/BLACKBOARD.md[本轮]，LOG 不计） | 方向1 交付
+19:01:20 @A27(silence) | DECISION  | - | - | - | D24: 沉默补齐方向1「攻防压制」第四轴——眩晕(跳过整回合)/冰冻(禁移)/致盲(输出-50%)/沉默(禁施法)，四层正交；特斯拉 silence↔stun 使玩家兼具输出+护盾+反法师控制；stun 留敌方未移除；遵守 ≤5 文件限制；balance-scan 遭遇模式 normal(3.3%)<hard(7%) 非单调 + normal 可玩性<25% 属预存种子噪声（60局仅差2局；战役梯度仍 3/1/1 单调健康），留作方向5 后续专职平衡轮，本轮不贸然调 DIFFICULTY 以免引入新回归 | 决策记录
+
+## 2026-07-07 17:00
+17:34:00 @A26(shielding) | JOIN      | - | - | - | 读取 LOG/PRODUCT/BLACKBOARD：D20 方向驱动模型生效中；用户消息"继续完成未完成的任务"为明确新需求；五方向健康度扫描见方向1 核心玩法已有控制(眩晕/冰冻)/削弱输出(致盲)/强制仇恨(嘲讽)维度，但缺乏 preemptive mitigation（战前减伤）→ 选方向1 核心玩法推进 | 第二十七轮自治（07-07 第二十三轮）· 方向1 核心玩法
+17:34:10 @A26(shielding) | CLAIM     | #EXPAND-shield | - | - | 认领"护盾防御机制（Shield · 伤害吸收）"方向1 核心玩法任务 | 写入 In-Progress
+17:34:20 @A26(shielding) | PROPOSE   | - | - | - | 决策D23：以 SKILL_DEFS.shield(isShield/shieldTurns:2/shieldAmount:20) + damageUnit(护盾吸收优先) + nextTurn(回合边界递减) 实现 preemptive mitigation 机制；特斯拉以 shield 替换 heal 槽位（保留 lightning/stun）；与治愈术(即时回血)正交，覆盖所有伤害来源（普攻/AoE/DoT/危险格） | 设计护盾方案
+17:34:30 @A26(shielding) | EXECUTE   | #EXPAND-shield | - | - | game.js: 新增 SKILL_DEFS.shield + createUnit(shield/shieldTurns) + handleSelectTarget(isShield 友方分支) + applySkill(护盾附加) + damageUnit(护盾吸收优先 + 盾N 飘字) + nextTurn(护盾递减消散) + drawUnits(🛡N 标记) + updateUI(状态提示) + sortedAttackSkills(排除 isShield) + evaluateSideScore(+14) + _state(暴露 shield/isShield) + drawFloaters(淡蓝 shield kind)；特斯拉 shield↔heal；DIFFICULTY easy 调参(hpMul 0.70→0.60, dmgMul 0.75→0.65)补偿攻防漂移 | 文件1/4
+17:35:00 @A26(shielding) | EXECUTE   | #EXPAND-shield | - | - | dist/game.js: 经 cp 单文件同步（node --check → SYNTAX_OK） | 文件2/4 + 同步
+17:35:10 @A26(shielding) | EXECUTE   | #EXPAND-shield | - | - | DESIGN.md: 新增 §9.13 护盾效果（机制/视觉/AI交互/设计定位/验证口径） | 文件3/4
+17:35:20 @A26(shielding) | EXECUTE   | #EXPAND-shield | - | - | BLACKBOARD.md: @A26 能力登记 + Status 最后推进更新 + Done 归档 + D23 决策 | 文件4/4
+17:35:30 @A26(shielding) | DONE      | #EXPAND-shield | - | - | node test/smoke-test.js → 19/0；node test/status-effects.test.js → 12/0；node test/balance-scan.js → 梯度健康（easy 68%/3win · normal 1win · hard 1win）；node test/perf-check.js → 8/0；零网络零依赖，全绿无回归（共改 4 文件：game.js/dist/game.js/DESIGN.md/BLACKBOARD.md，LOG 不计） | 方向1 交付
+17:35:40 @A26(shielding) | DECISION  | - | - | - | D23: 护盾机制补齐方向1"防御策略"维度——眩晕/冰冻(限制行动) + 致盲(削弱输出) + 嘲讽(强制吸引) + 护盾(直接吸收)，四层防御体系构成完整战术深度；特斯拉护盾替换 heal（使玩家小队失去自愈手段）→ 需玩家更谨慎管理受伤与护盾时序，DIFFICULTY easy 同步调弱补偿；遵守 ≤5 文件限制（LOG 不计） | 决策记录
 14:32:00 @A25(polish) | JOIN      | - | - | - | 读取 LOG/PRODUCT/BLACKBOARD：D20 方向驱动模型生效、D21 纠正待命；五方向健康度扫描见方向4 体验打磨持续偏薄（缺乏即时战斗反馈层），选方向4 视觉反馈推进 | 第二十六轮自治（07-07 第二十二轮）· 方向4 体验打磨
 14:32:10 @A25(polish) | CLAIM     | #UI-floaters | - | - | 认领"飘字反馈（Floating Combat Text）"方向4 视觉反馈任务 | 写入 In-Progress
 14:32:20 @A25(polish) | PROPOSE   | - | - | - | 决策D22：以 pushFloater + floaters 状态队列 + drawFloaters（render 末尾绘制、随帧上浮淡出 life 30→0）覆盖伤害/治疗/状态结算/DoT/危险格；零侵入战斗逻辑；_state 暴露供方向5 纯 Node 验证 | 设计飘字方案

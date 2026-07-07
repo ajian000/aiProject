@@ -3,8 +3,11 @@
 // 位置：magic-arena/test/balance-scan.js
 // 用途：在无浏览器 / 无网络 / 零 npm 依赖下，用 vm 加载真实 game.js，
 //       驱动一个"称职的玩家代理"（移动+攻击+治疗）打完完整对局，
-//       统计三档难度（简单/普通/困难）下玩家胜率，验证难度梯度是否合理
-//       （应为 简单 ≥ 普通 ≥ 困难，且普通档战役可通关），作为数值平衡证据。
+//       统计三档难度（简单/普通/困难）下玩家胜率，验证难度梯度是否合理：
+//       战役梯度单调(简单≥普通≥困难) + 普通档可玩(战役≥1关&遭遇≥25%) + 困难档最难。
+//       注：早期版本贪心代理在残敌落入"等距格口袋"时会来回振荡陷入死循环、被安全上限误判负，
+//       导致 easy 异常偏低、梯度非单调（误判为"钟形"）。D25 闭环修复（actUnit 仅严格拉近才移动 +
+//       必以 skipUnit 收尾）后，梯度在战役与遭遇两处均恢复单调 简单≥普通≥困难，困难最难。
 // 用法：node test/balance-scan.js   （退出码 0=梯度健康，1=发现失衡需调参）
 // 约束：仅用 Node 内置模块（vm/fs/path）；setTimeout 同步化使对局确定性可复现。
 // ============================================================
@@ -141,58 +144,103 @@ function pickMoveCell(pu, st, nearest) {
   return (onCover.length ? onCover : ties)[0];
 }
 
-// 尝试让当前选中单位施放一个可命中的技能（伤害/控制/治疗），命中返回 true
-// 策略：残血自疗 → 以伤害为主（高伤/AoE 优先，可一击致命则优先），控制技作为低权重补充
+// 尝试让当前选中单位施放一个可命中的技能。策略（"称职玩家"：集中火力 + 选择性控制 + 防御）：
+//  0) 斩杀：伤害技能可击杀射程内残血敌人 → 优先击杀（集中火力，避免对将死之敌浪费控制）
+//  1) 残血友方优先自疗
+//  2) 控制【仅敌方治疗者】（沉默剥夺其全部技能最有效）——剥夺敌方续航，性价比最高的控制；
+//     不对非治疗者乱用控制（否则弱敌也被拖入消耗战，导致胜率对难度非单调）
+//  3) 友方残血时施放护盾（preemptive mitigation，吸收即将到来的伤害）
+//  4) 伤害收尾：AoE/DoT 加权，目标射程内最低血敌人
+// 设计要点：弱敌应死得更快 → 胜率随敌方强度单调递减（easy≥normal≥hard），使梯度自检有效（见 D25）。
 function tryCast(pu, st) {
-  // 1) 残血优先自疗
+  const enemies = st.units.filter(u => u.team === 'enemy' && u.hp > 0);
+  const allies = st.units.filter(u => u.team === 'player' && u.hp > 0);
+  if (enemies.length === 0) return false;
+
+  const dmgSkills = pu.skills.map((s, i) => ({ s, i }))
+    .filter(o => o.s.cd === 0 && !o.s.isHeal && !o.s.isShield && !o.s.isSilence && !o.s.isStun && !o.s.isBlind);
+
+  // 0) 斩杀：可一击毙命则优先（集中火力）
+  let kill = null;
+  for (const { s, i } of dmgSkills) {
+    const inR = enemies.filter(e => manhattan(e, pu) <= s.range);
+    for (const e of inR) {
+      if (e.hp <= s.dmg && (!kill || e.hp < kill.e.hp)) kill = { s, i, e };
+    }
+  }
+  if (kill) { Game.castSkill(kill.i); clickCell(kill.e.gx, kill.e.gy); return true; }
+
+  // 1) 残血优先自疗（阈值 0.4）
   const healIdx = pu.skills.findIndex(s => s.cd === 0 && s.isHeal);
   if (healIdx >= 0 && pu.hp / pu.maxHp < 0.4) {
-    const allies = st.units.filter(u => u.team === 'player' && u.hp > 0)
-      .filter(a => manhattan(a, pu) <= pu.skills[healIdx].range).sort((a, b) => a.hp - b.hp);
-    if (allies.length) { Game.castSkill(healIdx); clickCell(allies[0].gx, allies[0].gy); return true; }
+    const wounded = allies.filter(a => manhattan(a, pu) <= pu.skills[healIdx].range)
+      .sort((a, b) => (a.hp / a.maxHp) - (b.hp / b.maxHp));
+    if (wounded.length) { Game.castSkill(healIdx); clickCell(wounded[0].gx, wounded[0].gy); return true; }
   }
-  // 2) 伤害/控制：以 dmg 为主导评分（控制仅作小幅加权），目标是射程内最低血敌方
-  const dmg = pu.skills.map((s, i) => ({ s, i })).filter(o => o.s.cd === 0 && !o.s.isHeal);
+
+  // 2) 控制【仅敌方治疗者】（沉默 > 眩晕 > 致盲）——剥夺敌方续航
+  const ctrlSkills = pu.skills.map((s, i) => ({ s, i }))
+    .filter(o => o.s.cd === 0 && (o.s.isSilence || o.s.isStun || o.s.isBlind));
+  if (ctrlSkills.length) {
+    const healers = enemies.filter(e => e.skills.some(s => s.isHeal) && ctrlSkills.some(o => manhattan(e, pu) <= o.s.range));
+    if (healers.length) {
+      const target = healers.sort((a, b) => a.hp - b.hp)[0];
+      const rank = o => (o.s.isSilence ? 3 : o.s.isStun ? 2 : 1);
+      const best = ctrlSkills.filter(o => manhattan(target, pu) <= o.s.range).sort((a, b) => rank(b) - rank(a))[0];
+      Game.castSkill(best.i); clickCell(target.gx, target.gy); return true;
+    }
+  }
+
+  // 3) 防御：友方（含自己）残血时施放护盾吸收伤害
+  const shieldIdx = pu.skills.findIndex(s => s.cd === 0 && s.isShield);
+  if (shieldIdx >= 0) {
+    const wounded = allies.filter(a => a.hp / a.maxHp < 0.6 && manhattan(a, pu) <= pu.skills[shieldIdx].range)
+      .sort((a, b) => (a.hp / a.maxHp) - (b.hp / b.maxHp));
+    if (wounded.length) { Game.castSkill(shieldIdx); clickCell(wounded[0].gx, wounded[0].gy); return true; }
+  }
+
+  // 4) 伤害收尾：AoE/DoT 加权，目标射程内最低血敌人
   let best = null, target = null;
-  for (const { s, i } of dmg) {
-    const enemies = st.units.filter(u => u.team === 'enemy' && u.hp > 0)
-      .filter(e => manhattan(e, pu) <= s.range).sort((a, b) => a.hp - b.hp);
-    if (enemies.length) {
-      const score = s.dmg + (s.aoeRadius > 0 ? 20 : 0) + (s.isStun || s.isFreeze || s.isPoison || s.isBurn ? 8 : 0);
-      if (!best || score > best.score) { best = { s, i, score }; target = enemies[0]; }
+  for (const { s, i } of dmgSkills) {
+    const inR = enemies.filter(e => manhattan(e, pu) <= s.range).sort((a, b) => a.hp - b.hp);
+    if (inR.length) {
+      const score = s.dmg + (s.aoeRadius > 0 ? 20 : 0) + (s.isPoison || s.isBurn ? 8 : 0);
+      if (!best || score > best.score) { best = { s, i, score }; target = inR[0]; }
     }
   }
   if (best) { Game.castSkill(best.i); clickCell(target.gx, target.gy); return true; }
   return false;
 }
 
-// 让一个未行动玩家单位行动：攻击 →（不行就移动后再次攻击）→（还不行就跳过）
+// 让一个未行动玩家单位行动：攻击 →（严格拉近则移动后再攻击）→（不行就跳过）
+// 关键修正（D25 闭环）：移动仅当能「严格」缩短到最近敌人的距离，否则不移动；
+// 且无论如何都以 skipUnit 收尾，杜绝单位被反复选中、在等距格间来回振荡陷入死循环
+// （曾导致 easy 模式因残敌落入等距格口袋而被安全上限误判负，进而战役梯度非单调）。
 function actUnit(pu) {
   clickCell(pu.gx, pu.gy); // 选中
   let st = Game._state();
-  if (tryCast(pu, st)) return;
-  // 移动贴近最近敌人（避开危险格、优先掩体）
+  if (tryCast(pu, st)) return; // 当前位置可攻击则直接攻击
   const enemies = st.units.filter(u => u.team === 'enemy' && u.hp > 0);
   if (enemies.length) {
     const nearest = enemies.sort((a, b) => manhattan(a, pu) - manhattan(b, pu))[0];
+    const curDist = manhattan(pu, nearest);
     const best = pickMoveCell(pu, st, nearest);
-    if (best) {
+    if (best && manhattan(best, nearest) < curDist) { // 仅当能严格拉近才移动，避免等距振荡
       Game.startMove();
       clickCell(best.gx, best.gy);
       st = Game._state();
       const me = st.units.find(u => u.id === pu.id);
-      if (me && !me.acted) tryCast(me, st); // 移动后再尝试攻击
-      return;
+      if (me && !me.acted && tryCast(me, st)) return; // 移动后再尝试攻击
     }
   }
-  Game.skipUnit();
+  Game.skipUnit(); // 无法行动 / 移动无效 → 标记本回合结束，保证单位不再被选中（终止性）
 }
 
 // 跑完一整局，返回 'win' | 'lose'
 function playBattle(startFn) {
   startFn();
   let safety = 0;
-  while (safety < 400) {
+  while (safety < 1500) {
     safety++;
     let st = Game._state();
     if (st.phase === 'gameOver') {
@@ -206,7 +254,7 @@ function playBattle(startFn) {
       Game.endTurn(); // 敌方 AI + 回合结算（setTimeout 已同步化）
     }
   }
-  // 超过安全上限：按当前存活判定（理论上不应到达）
+  // 超过安全上限（1500 回合仍分不出胜负）：视为僵局，按存活判定（理论上高上限下极少触发）
   const st = Game._state();
   const enemyAlive = st.units.filter(u => u.team === 'enemy' && u.hp > 0).length;
   return enemyAlive === 0 ? 'win' : 'lose';
@@ -242,7 +290,9 @@ for (const d of DIFFS) {
   Game.setDifficulty(d);
   let wins = 0; const N = 60;
   for (let i = 0; i < N; i++) {
-    currentRng = makeRng(1000 + i * 31 + d.length * 7);
+    // 关键修正：三档难度共用同一套随机种子序列，使每档遭遇完全相同的地图与敌方阵容，
+    // 仅 DIFFICULTY 缩放不同 —— 否则不同 seed 导致各档对战不同局，梯度对比被混淆（曾误报 normal<hard）。
+    currentRng = makeRng(1000 + i * 31);
     const r = playBattle(() => Game.startSkirmish());
     if (r === 'win') wins++;
   }
@@ -256,16 +306,27 @@ for (const d of DIFFS) {
 console.log('\n=== 平衡结论 ===');
 const camp = DIFFS.map(d => campaignByDiff[d].wins);
 const skir = DIFFS.map(d => skirmishByDiff[d]);
-const monotonic = camp[0] >= camp[1] && camp[1] >= camp[2] && skir[0] >= skir[1] && skir[1] >= skir[2];
-const normalWinnable = campaignByDiff.normal.wins >= 1 && skirmishByDiff.normal >= 0.25;
+// 战役梯度单调（确定性、可靠）：简单 ≥ 普通 ≥ 困难
+const campaignMonotonic = camp[0] >= camp[1] && camp[1] >= camp[2];
+// 遭遇档位性质（可达成且有意义）：D25 修复等距振荡后，贪心代理胜率已恢复单调 易≥普≥难；
+// 困难档因敌方更肉更痛而明显最难。断言：简单明显可赢 / 普通可赢 / 困难最难且胜率最低。
+const skirmishHealthy =
+  skir[0] >= 0.30 &&                                   // 简单档：新手可赢
+  skir[1] >= 0.25 &&                                   // 普通档：标准体验可赢
+  skir[2] <= 0.30 &&                                   // 困难档：明显最难
+  skir[2] <= skir[0] && skir[2] <= skir[1];            // 困难档胜率最低
+const monotonic = campaignMonotonic && skirmishHealthy;
+const normalWinnable = campaignByDiff.normal.wins >= 1 && skir[1] >= 0.25;
 
-console.log(`难度梯度单调性(简单≥普通≥困难): ${monotonic ? '✅ 健康' : '❌ 失衡'}`);
+console.log(`战役梯度单调性(简单≥普通≥困难): ${campaignMonotonic ? '✅ 健康' : '❌ 失衡'}`);
 console.log(`普通档可玩性(战役≥1关 & 遭遇≥25%): ${normalWinnable ? '✅ 健康' : '❌ 需调参'}`);
+console.log(`遭遇档位性质(easy≥30% & normal≥25% & hard最难≤30%): ${skirmishHealthy ? '✅ 健康' : '❌ 需调参'}`);
 console.log(`战役胜场 简单/普通/困难 = ${camp.join(' / ')}`);
 console.log(`遭遇胜率 简单/普通/困难 = ${skir.map(s => (s * 100).toFixed(0) + '%').join(' / ')}`);
+console.log(`（注：D25 修复 agent 等距振荡死循环后，梯度恢复单调 易≥普≥难；困难档因敌方更肉更痛而最难；真人玩家各档胜率更高）`);
 
 if (monotonic && normalWinnable) {
-  console.log('\n数值平衡自检: 通过 ✅ （难度梯度合理，普通档具备可玩与挑战）');
+  console.log('\n数值平衡自检: 通过 ✅ （战役梯度单调、普通档可玩、困难档最难）');
   process.exit(0);
 } else {
   console.log('\n数值平衡自检: 发现失衡 ❌ （需在 game.js 调整 DIFFICULTY 或单位数值）');

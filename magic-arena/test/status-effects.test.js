@@ -5,7 +5,8 @@
 //       game.js，mock 浏览器环境（DOM/Canvas/localStorage/setTimeout 同步化），
 //       通过公开 API（_state / startCampaign / castSkill / 画布点击 / endTurn）
 //       确定性地验证状态效果子系统的核心行为：
-//         - 眩晕(stun) 应用 + 生命周期（敌方被眩晕跳过行动）
+//         - 沉默(silence) 应用 + 生命周期（敌方被沉默仍可移动但无法施法，回合边界递减）
+//           （原玩家眩晕术已换装为沉默术；stun 现由敌方 托尔/加百列 持有，S5 做存在性校验）
 //         - 灼烧(burn) 应用 + 回合边界持续伤害结算
 //         - 致盲(blind) 应用 + 生命周期 + 输出伤害降低 50% 的伤害修正
 //         - 冰冻(freeze) / 中毒(poison) 仍在技能数据/引擎中正确接线（存在性断言）
@@ -137,19 +138,19 @@ function enemyByName(name) {
 console.log('\n=== Magic Arena 状态效果回归测试 ===\n');
 
 // ------------------------------------------------------------
-// S1 眩晕术（stun）：应用 + 敌方被眩晕本回合跳过行动（生命周期）
+// S1 沉默术（silence）：应用 + 生命周期（敌方被沉默期间仍可移动但无法施法，回合边界递减）
 // ------------------------------------------------------------
-console.log('[S1] 眩晕术 (stun) 应用与生命周期');
+console.log('[S1] 沉默术 (silence) 应用与生命周期');
 Game.setDifficulty('normal');
 Game.startCampaign(1);
-// 特斯拉(1,3) 移动至 (4,3)（距敌方(6,3)维克 2 格，眩晕 range3 命中）
+// 特斯拉(1,3) 移动至 (4,3)（距敌方(6,3)维克 2 格，沉默 range3 命中）
 moveUnit(1, 3, 4, 3);
-castAt(4, 3, 1, 6, 3); // 特斯拉技能槽[1] = 眩晕术，目标 (6,3)
+castAt(4, 3, 1, 6, 3); // 特斯拉技能槽[1] = 沉默术，目标 (6,3)
 const s1target = enemyAt(6, 3);
-assert(!!s1target && s1target.stunned === true, 'S1 眩晕术命中 → 维克 stunned=true（实际 ' + (s1target ? s1target.stunned : '目标已死') + '）');
-Game.endTurn(); // 敌方回合：被眩晕者跳过行动并解除眩晕标记
-const s1after = enemyAt(6, 3);
-assert(!!s1after && s1after.stunned === false, 'S1 敌方回合后眩晕标记被消费（stunned=false），敌方跳过该回合行动');
+assert(!!s1target && s1target.silenceTurns === 2, 'S1 沉默术命中 → 维克 silenceTurns=2（实际 ' + (s1target ? s1target.silenceTurns : '目标已死') + '）');
+Game.endTurn(); // 敌方回合：被沉默者仍可移动（不施法），回合边界 silenceTurns 递减
+const s1after = enemyByName('暗影巫·维克'); // 沉默不禁止移动，按名称追踪
+assert(!!s1after && s1after.silenceTurns === 1, 'S1 一回合后沉默递减 → silenceTurns=1（实际 ' + (s1after ? s1after.silenceTurns : '-') + '）');
 
 // ------------------------------------------------------------
 // S2 灼烧术（burn）：应用 + 回合边界持续伤害结算（DoT）
@@ -213,9 +214,9 @@ if (annaHit) {
 assert(annaHit && dealt === 9, 'S4 致盲修正生效：被致盲的安娜陨石术(18) 对莫甘娜造成 9 伤害（日志实测 ' + dealt + '，预期 floor(18×0.5)=9）');
 
 // ------------------------------------------------------------
-// S5 冰冻 / 中毒 存在性：技能数据仍在引擎中正确接线（玩家不可施放，由敌方持有）
+// S5 冰冻 / 中毒 / 眩晕 存在性：技能数据仍在引擎中正确接线（玩家不可施放，由敌方持有）
 // ------------------------------------------------------------
-console.log('[S5] 冰冻(freeze)/中毒(poison) 技能接线存在性');
+console.log('[S5] 冰冻(freeze)/中毒(poison)/眩晕(stun) 技能接线存在性');
 Game.setDifficulty('normal');
 Game.startCampaign(3); // 含 弗罗斯特(冰冻) / 维克·摩格(中毒)
 const s5enemies = Game._state().units.filter(u => u.team === 'enemy');
@@ -223,6 +224,29 @@ const hasFreeze = s5enemies.some(u => u.skills.some(s => s.isFreeze));
 const hasPoison = s5enemies.some(u => u.skills.some(s => s.isPoison));
 assert(hasFreeze, 'S5 敌方单位持有冰冻术（isFreeze 标记存在）');
 assert(hasPoison, 'S5 敌方单位持有中毒术（isPoison 标记存在）');
+// 眩晕术由敌方 托尔/加百列 持有（玩家特斯拉已换装为沉默术），改用含 stun 敌方的战役验证存在性
+Game.startCampaign(2); // 含 托尔(眩晕)
+const s5enemies2 = Game._state().units.filter(u => u.team === 'enemy');
+const hasStun = s5enemies2.some(u => u.skills.some(s => s.isStun));
+assert(hasStun, 'S5 敌方单位持有眩晕术（isStun 标记存在，玩家特斯拉已换装为沉默术）');
+
+// ------------------------------------------------------------
+// S6 易伤术（vuln）：应用 + 生命周期（2 回合递减至 0）——集火放大器，被易伤目标受到伤害 +50%
+// ------------------------------------------------------------
+console.log('[S6] 易伤术 (vuln) 应用与生命周期');
+Game.setDifficulty('normal');
+Game.startCampaign(1);
+// 莫甘娜(1,5) 移动至 (3,5)（距敌方(6,5)安娜 3 格，易伤 range3 命中）；易伤术现位于技能槽[1]
+moveUnit(1, 5, 3, 5);
+castAt(3, 5, 1, 6, 5); // 莫甘娜技能槽[1] = 易伤术，目标 (6,5)
+const s6target = enemyAt(6, 5);
+assert(!!s6target && s6target.vulnTurns === 2, 'S6 易伤术命中 → 安娜 vulnTurns=2（实际 ' + (s6target ? s6target.vulnTurns : '目标已死') + '）');
+Game.endTurn(); // 第一个回合边界 → 2→1（按名称追踪）
+const s6after1 = enemyByName('亡灵术士·安娜');
+assert(!!s6after1 && s6after1.vulnTurns === 1, 'S6 一回合后易伤递减 → vulnTurns=1（实际 ' + (s6after1 ? s6after1.vulnTurns : '-') + '）');
+Game.endTurn(); // 第二个回合边界 → 1→0
+const s6after2 = enemyByName('亡灵术士·安娜');
+assert(!!s6after2 && s6after2.vulnTurns === 0, 'S6 两回合后易伤解除 → vulnTurns=0（实际 ' + (s6after2 ? s6after2.vulnTurns : '-') + '）');
 
 // ------------------------------------------------------------
 // 6. 汇总

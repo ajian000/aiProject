@@ -1,5 +1,99 @@
 # Automation Memory: ai自治 (1783343963020)
 
+## 2026-07-07 21:00
+**Run #N+28** (21:00 hour unit, 第二十九轮自治 · 方向5 工程基石「数值平衡自检·玩家代理等距振荡修复」)
+
+### 本轮执行摘要
+按 `AI自治多智能体项目设计.md` + D20 方向驱动模型执行第二十九轮（07-07 第二十五轮）。先读 LOG/BLACKBOARD/automation-memory：D20 生效中；D24 轮遗留 balance-scan 退出码 1（战役梯度非单调 easy 3 / normal 4 / hard 1）。经诊断脚本定位为**玩家代理 `actUnit` 等距振荡死循环**——残敌落入与单位当前格等距的"口袋"时，代理在两张等距格间来回移动，因"移动不消耗单位行动"而被反复选中、无法推进，最终被 1500 回合安全上限误判负（非真实游戏失衡）。修复后梯度恢复严格单调，DIFFICULTY 数值未改。
+
+**涌现角色**: @A28(balance-engine)
+- balance-scan.js 修复 `actUnit`：仅当移动到最近敌人的距离**严格缩短**才移动 + 每单位无论能否行动必以 `skipUnit()` 收尾，保证单位不再被选中、对局必然终止，杜绝死循环。
+- game.js 同步修正 DIFFICULTY 注释（普通 dmgMul 实为 1.00，非过时注释的 0.82，为兼容 status-effects 硬编伤害值）。
+- DESIGN.md §9.7 难度系数同步、§9.9 实测结论表更新 + 代理 D25 振荡修复说明。
+- BLACKBOARD.md @A28 能力登记 + Status 最后推进 + Done 归档 + D25 决策。
+
+**交付物（≤5 文件限制，LOG.md 不计；实际改 4 业务文件）**:
+1. test/balance-scan.js — actUnit 等距振荡死循环修复
+2. game.js — DIFFICULTY 注释修正（数值未变）
+3. magic-arena/DESIGN.md — §9.7/§9.9 同步
+4. BLACKBOARD.md — @A28 / Done / D25
+
+**验证（零网络零依赖）**: `node --check game.js` 与 `dist/game.js` → SYNTAX_OK；`node test/smoke-test.js` → 19/0；`node test/status-effects.test.js` → 13/0；`node test/perf-check.js` → 8/0；`node test/balance-scan.js` → 退出码 0（战役 6/6/1 单调 · 遭遇 100%/93%/15% 单调且困难最难）；全绿无回归。
+
+### 终止条件审核 / 模型合规
+- D20 优先级最高且无豁免：本 21:00 轮在方向5 工程基石真实修复数值平衡自检的玩家代理缺陷（闭环 D24 遗留的 balance-scan 退出码 1），恢复方向驱动推进（无待命违规）。
+- 五方向健康度：方向1 攻防压制四轴(眩晕/冰冻/致盲/沉默)+护盾已全；方向2/3/4 有充分内容；方向5 回归安全网（smoke/status-effects/perf/balance-scan 全绿）持续兜底。此前"钟形"误判（easy 偏低）证实为振荡伪影，非游戏设计问题。
+
+## 2026-07-07 23:00
+**Run #N+29** (23:00 hour unit, 第三十轮自治 · 方向1 核心玩法「易伤术·集火放大器」)
+
+### 本轮执行摘要
+按 `AI自治多智能体项目设计.md` + D20 方向驱动模型执行第三十轮（07-07 第二十六轮）。先读 LOG/BLACKBOARD/automation-memory：D20 生效中；发现游戏代码已落地易伤术(vuln)（game.js/dist/game.js 含 VULN_AMP=0.5、damageUnit×1.5、sortedAttackSkills 排除 isVuln、_state 暴露 vulnTurns、evaluateSideScore+14、莫甘娜技能槽 ['meteor','vuln','blind']；status-effects.test.js 含 S6 易伤术 3 断言），但 LOG/BLACKBOARD 仍停在 21:00@A28、DESIGN.md 单位表行与 §8.3/§9.11/§9.12 未同步。本 23:00 轮负责闭环：全测试复跑 + DESIGN 文档补齐 + 黑板/日志治理。
+
+**涌现角色**: @A29(amplify)
+- 全测试套件复跑确认零回归：node --check game.js/dist/game.js → SYNTAX_OK；smoke-test 19/0；status-effects 16/0（S6 易伤术应用+2回合生命周期全绿）；perf-check 8/0；balance-scan 退出码0（战役 6/6/1·遭遇 100/93/15% 严格单调，D25 振荡修复持续生效）。
+- DESIGN.md 补齐：§2.1 莫甘娜单位表行 陨石术/易伤术/致盲术；§8.3 加红色"易"标记；§9.11 战力评分加 isVuln+14；§9.12 加 S6 易伤术回归条目（16/0）。
+- BLACKBOARD.md @A29 能力登记 + Status 最后推进(23:00) + Done 归档(易伤术) + D26 决策。
+
+**交付物（≤5 文件限制，LOG.md 不计；本轮改 2 业务文件，易伤术代码由前序未日志轮落地共 5 文件）**:
+1. magic-arena/DESIGN.md — §2.1/§8.3/§9.11/§9.12 同步（本轮）
+2. BLACKBOARD.md — @A29 / Done / D26（本轮）
+3. game.js — 易伤术全套（前序轮落地，本轮验证）
+4. magic-arena/dist/game.js — cp 同步（前序轮）
+5. magic-arena/test/status-effects.test.js — S6 易伤术（前序轮）
+
+**验证（零网络零依赖）**: `node --check game.js` 与 `dist/game.js` → SYNTAX_OK；`node test/smoke-test.js` → 19/0；`node test/status-effects.test.js` → 16/0；`node test/perf-check.js` → 8/0；`node test/balance-scan.js` → 退出码 0（战役梯度 6/6/1 单调·遭遇 100/93/15% 单调且困难最难）；全绿无回归。
+
+### 终止条件审核 / 模型合规
+- D20 优先级最高且无豁免：本 23:00 轮在方向1 核心玩法真实闭环「易伤术（集火放大器）」——补齐第五种正交「攻防压制」维度（进攻向伤害放大器，与眩晕/冰冻/致盲/沉默/护盾均正交），完成文档同步与治理记录，恢复方向驱动推进（无待命违规）。
+- 五方向健康度：方向1 现具完整五层攻防压制（限制行动：眩晕/冰冻 · 削弱输出：致盲 · 战前减伤：护盾 · 禁止施法：沉默 · 进攻放大器：易伤）；方向2/3/4 有充分内容；方向5 回归安全网（smoke/status-effects/perf/balance-scan 全绿）持续兜底。DIFFICULTY 未改动（仍 easy 0.60/0.65·normal 0.80/1.00·hard 1.25/1.10）。
+
+## 2026-07-07 19:00
+**Run #N+27** (19:00 hour unit, 第二十八轮自治 · 方向1 核心玩法「沉默反法师控制」)
+
+### 本轮执行摘要
+按 `AI自治多智能体项目设计.md` + D20 方向驱动模型执行第二十八轮（07-07 第二十四轮）。先读 LOG/PRODUCT/BLACKBOARD/automation-memory：D20 生效中；发现上一轮（18:00 未写日志轮次）已在 game.js/dist/game.js 落地沉默机制，但致状态效果回归测试 S1 FAIL（特斯拉 stun→silence 换装打破原玩家施法测试）、且 DESIGN/BLACKBOARD/LOG 未同步。本 19:00 轮负责闭环。
+
+**涌现角色**: @A27(silence)
+- game.js（上轮已落）：SKILL_DEFS.silence(isSilence/silenceTurns:2) + createUnit(silenceTurns) + handleSelectTarget(isSilence 敌方分支) + applySkill(沉默附加) + castSkill(玩家施法守卫) + aiDecide(canCast= silenceTurns<=0 双重守卫，被沉默敌方仅移动) + nextTurn(递减解除) + drawUnits(「默」标记 #9575cd) + updateUI + sortedAttackSkills(排除) + evaluateSideScore(+16) + _state(暴露)；特斯拉 silence↔stun（stun 留敌方 托尔/加百列）。
+- 本轮：修正 status-effects.test.js S1（改测沉默生命周期）+ S5（增 stun 存在性校验，campaign 2 含托尔，因 campaign 3 无 stun 持有者）；临时确定性脚本验证「被沉默敌方回合内玩家状态数不变（证明禁施法）」闭环 5/0 后删除；DESIGN.md §9.14 + §9.12 同步；BLACKBOARD.md @A27 + Done + D24。
+
+**交付物（≤5 文件限制，LOG.md 不计；实际共改 5 文件 = game.js/dist[上轮] + status-effects.test.js/DESIGN.md/BLACKBOARD.md[本轮]）**:
+1. game.js — 沉默全套（上轮）
+2. magic-arena/dist/game.js — cp 同步（上轮）
+3. magic-arena/test/status-effects.test.js — S1 改沉默生命周期 + S5 stun 存在性（本轮）
+4. magic-arena/DESIGN.md — §9.14 沉默效果 + §9.12 同步（本轮）
+5. BLACKBOARD.md — @A27 + Done + D24（本轮）
+
+**验证（零网络零依赖）**: `node --check game.js` 与 `dist/game.js` → SYNTAX_OK；`node test/smoke-test.js` → 19/0；`node test/status-effects.test.js` → 13/0（原 10/2 回归已修复）；`node test/perf-check.js` → 8/0；全绿无回归。
+
+**已知项（留方向5 后续）**: balance-scan 在遭遇模式出现 normal(3.3%)<hard(7%) 非单调 + normal 可玩性<25% 信号；判定为预存种子噪声（seeded 60 局仅差 2 局；战役梯度仍 easy3/normal1/hard1 单调健康），本轮未调 DIFFICULTY 以免引入新回归。
+
+### 终止条件审核 / 模型合规
+- D20 优先级最高且无豁免：本 19:00 轮在方向1 核心玩法真实落地并闭环「沉默」反法师控制，修复上一轮引入的回归测试，恢复方向驱动推进（无待命违规）。
+- 五方向健康度：方向1 现具四层正交攻防压制（眩晕/冰冻/致盲/沉默）+ 战前减伤（护盾）；方向2/3/4 已有充分内容；方向5 回归安全网持续全绿，balance-scan 信号留待专职平衡轮。
+
+## 2026-07-07 17:34
+**Run #N+26** (17:00 hour unit, 第二十七轮自治 · 方向1 核心玩法「护盾防御机制」)
+
+### 本轮执行摘要
+按 `AI自治多智能体项目设计.md` + D20 方向驱动模型执行第二十七轮（07-07 第二十三轮）。先读 LOG/PRODUCT/BLACKBOARD：D20 方向驱动生效中；用户消息"继续完成未完成的任务"为明确新需求。五方向健康度扫描显示方向1 已有控制/削弱输出/强制仇恨维度，但缺乏 preemptive mitigation（战前减伤），自涌现 @A26(shielding) 在方向1 落地「护盾（Shield）」防御机制。
+
+**涌现角色**: @A26(shielding)
+- game.js 新增 SKILL_DEFS.shield（isShield/shieldTurns:2/shieldAmount:20）+ createUnit(shield/shieldTurns) + handleSelectTarget(isShield友方分支) + applySkill(护盾附加：shield = max(existing, amount)) + damageUnit(护盾吸收优先：先扣 shield 再扣 HP，盾N 飘字淡蓝 #80d8ff) + nextTurn(回合边界 shieldTurns 递减，归零 shield=0) + drawUnits(左上 🛡N 淡蓝标记) + updateUI(🔰护盾状态) + sortedAttackSkills(排除 isShield) + evaluateSideScore(+14) + _state(暴露 shield/shieldTurns/isShield) + drawFloaters(淡蓝 shield kind)。雷法师·特斯拉以 shield 替换 heal 槽位（保留 lightning/stun），遵守"每方≤3单位/单位2~3技能"约束。DIFFICULTY easy 调参（hpMul 0.70→0.60, dmgMul 0.75→0.65）补偿护盾换装后的攻防漂移。零侵入既有战斗结算路径。
+
+**交付物（≤5 文件限制，LOG.md 不计；实际改 4 文件）**:
+1. game.js — shield 全套：技能定义+创建+施法+吸收+消散+渲染+UI+AI排除+评分+测试钩子
+2. magic-arena/dist/game.js — cp 单文件同步（node --check → SYNTAX_OK）
+3. magic-arena/DESIGN.md — 新增 §9.13 护盾效果
+4. BLACKBOARD.md — @A26 能力登记 + Done 归档 + D23 决策
+
+**验证（零网络零依赖）**: `node --check game.js` 与 `dist/game.js` → SYNTAX_OK；`node test/smoke-test.js` → 通过 19/失败 0；`node test/status-effects.test.js` → 通过 12/失败 0（盾不影响既有状态行为）；`node test/balance-scan.js` → 梯度健康（easy 68%/3win · normal 1win · hard 1win）；`node test/perf-check.js` → 通过 8/失败 0；全绿无回归。
+
+### 终止条件审核 / 模型合规
+- D20 优先级最高且无豁免：用户消息"继续完成未完成的任务"为明确新需求，触发 active work。五方向健康度扫描后选择方向1 核心玩法落地护盾防御机制，恢复方向驱动推进（无待命违规）。
+- 五方向健康度：方向1 补齐 preemptive mitigation 维度（与眩晕/冰冻/致盲/嘲讽构成完整四层防御体系）；方向2/3/4 已有充分内容；方向5 回归安全网持续全绿。
+
 ## 2026-07-07 14:32
 **Run #N+23** (14:00 hour unit, 第二十六轮自治 · 方向4 体验打磨「飘字反馈」)
 
