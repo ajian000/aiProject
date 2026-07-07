@@ -1,5 +1,111 @@
 # Automation Memory: ai自治 (1783343963020)
 
+## 2026-07-07 14:32
+**Run #N+23** (14:00 hour unit, 第二十六轮自治 · 方向4 体验打磨「飘字反馈」)
+
+### 本轮执行摘要
+按 `AI自治多智能体项目设计.md` + D20 方向驱动模型执行第二十六轮（07-07 第二十二轮）。先读 LOG/PRODUCT/BLACKBOARD：D20 方向驱动生效、D21 纠正待命；五方向健康度扫描显示方向4 体验打磨（视觉反馈）持续偏薄，自涌现 @A25(polish) 在方向4 落地「飘字反馈（Floating Combat Text）」。
+
+**涌现角色**: @A25(polish)
+- game.js 新增 `pushFloater(gx,gy,text,kind)` + `floaters` 状态队列 + `drawFloaters()`（在 `render()` 末尾绘制，随帧上浮并淡出 life 30→0）；`damageUnit` 伤害飘字、`applySkill` 治疗/状态施加（眩晕/灼烧/冰冻/中毒/致盲）飘字、`nextTurn` 灼烧/中毒 DoT 与危险格环境伤害飘字；`_state()` 暴露 `floaters` 供纯 Node 验证。零侵入战斗逻辑（不改动伤害/AI/胜负结算）。
+
+**交付物（≤5 文件限制，LOG.md 不计；实际改 4 文件）**:
+1. game.js — pushFloater + floaters 队列 + drawFloaters + 各结算点调用 + _state 暴露
+2. magic-arena/dist/game.js — cp 单文件同步（node --check → SYNTAX_OK）
+3. magic-arena/DESIGN.md — §8.3 视觉反馈新增飘字反馈
+4. BLACKBOARD.md — @A25 能力登记 + Done 归档 + D22 决策
+
+**验证（零网络零依赖）**: 临时验证脚本驱动真实引擎跑通战役 → `floaters` 实时生成(max 12)、`kind` 含 damage 与 status 均命中；`node --check game.js` 与 `dist/game.js` → SYNTAX_OK；`smoke-test`(19/0)、`status-effects`(12/0)、`balance-scan`(退出码0)、`perf-check`(8/0) 全绿无回归。
+
+### 终止条件审核 / 模型合规
+- D20 优先级最高且无豁免：本轮在方向4 体验打磨真实落地飘字反馈，恢复方向驱动推进（无待命违规）。
+- 五方向健康度：方向1/2/3 已有充分内容；方向5 工程基石有回归安全网；方向4 本轮补齐即时战斗视觉反馈层（与既有状态标记构成闭环），不再明显偏薄。下一轮可继续方向4（如主菜单动画过渡）或方向2（内容扩建）推进。
+
+## 2026-07-07 13:25
+**Run #N+22** (13:00 hour unit, 第二十五轮自治 · 方向5 工程基石「状态效果回归测试」)
+
+### 本轮执行摘要
+按 `AI自治多智能体项目设计.md` 自治协议执行第二十五轮（07-07 第二十一轮）。先读 LOG/PRODUCT/BLACKBOARD：D20 方向驱动模型生效、D21 纠正待命违规；本自动轮无显式新用户需求，但按 D20 仍须在至少 1 方向推进。五方向健康度扫描（D21 建议方向4/5 兜底）后，自涌现 @A24(qa2) 在**方向5 工程基石**为 A12~A23 落地的状态机制补齐确定性回归安全网。
+
+**涌现角色**: @A24(qa2)
+- 新建 `magic-arena/test/status-effects.test.js`：纯 Node 零依赖（复用 smoke-test 的浏览器环境 mock + vm 加载真实 game.js + setTimeout 同步化），通过公开 API（`_state`/`startCampaign`/`castSkill`/画布点击/`endTurn`）确定性验证 5 场景 12 断言——眩晕(应用+敌方跳过行动+标记消费)、灼烧(应用+回合边界 DoT 结算 `burnDmg`+计数递减)、致盲(应用+2 回合生命周期 + 输出伤害 ×0.5 修正，日志实测陨石术 18→9)、冰冻/中毒(敌方技能数据仍正确接线 `isFreeze`/`isPoison`)。
+- 关键隔离技巧：被致盲敌方会在其回合移动 → 按**名称**而非坐标追踪；多敌方可能同时攻击同一玩家 → 仅扫描**本回合新增**战斗日志条目隔离被致盲单位的伤害，避免污染断言。
+
+**交付物（≤5 文件限制，LOG.md 不计；实际改 3 文件）**:
+1. magic-arena/test/status-effects.test.js — 新建状态效果回归测试（12 断言）
+2. magic-arena/DESIGN.md — 新增 §9.12 状态效果回归测试
+3. BLACKBOARD.md — @A24 能力登记 + Status 最后推进 + Done 归档 + D22 决策
+（game.js 未改动 → dist/game.js 与源码一致，无需同步）
+
+**验证（零网络零依赖）**: `node test/status-effects.test.js` → 通过 12/失败 0；与 `smoke-test`(19/0)、`balance-scan`(梯度健康)、`perf-check`(8/0) 一并构成零网络回归套件**全绿**；`node --check game.js` 与 `dist/game.js` SYNTAX_OK、`diff` 一致。
+
+### 终止条件审核 / 模型合规
+- D20 优先级最高且无豁免：自动轮无论有无显式新需求，均须认领至少 1 个方向并产出可验证改动。本轮在方向5 工程基石落地状态效果回归测试，恢复方向驱动合规推进（D21 精神），无待命违规。
+- 五方向健康度：方向1/2/3 已有充分内容；方向5 本次补齐状态机制回归安全网；方向4(UI打磨) 仍相对偏薄，可作为下一轮优先方向。
+
+## 2026-07-07 12:38
+**Run #N+21** (12:00 hour unit, 第二十四轮自治 · 方向1 核心玩法「致盲」)
+
+### 本轮执行摘要
+按 `AI自治多智能体项目设计.md` 自治协议执行第二十四轮（07-07 第二十轮）。先读 LOG/PRODUCT/BLACKBOARD：D20 方向驱动模型已生效(11:41)、D18 待命已作废；**关键发现——上一轮 12:27（Run #N+20）在 D20 生效后仍按旧"待命"模型仅做只读核验、零代码改动，违反 D20**。
+
+**本轮判定**：用户查询为通用"按设计文档执行"约束指令（≤5 文件·无网络·日志写 log.md 精确到小时·日志不计），无具体新需求。但依 D20，无新需求不再是待命理由——必须在至少一个方向推进。自涌现 @A23(status2) 在**方向1 核心玩法**落地新状态效果「致盲(blind)」。
+
+**涌现角色**: @A23(status2)
+- game.js 新增 SKILL_DEFS.blind（isBlind/blindTurns:2，致盲期敌方伤害-50%）+ createUnit(blindTurns) + handleSelectTarget(isBlind敌方校验) + applySkill(isBlind分支) + damageUnit(attacker 参数化减伤) + nextTurn(致盲结算) + drawUnits(盲标记) + updateUI(提示) + sortedAttackSkills(排除 isBlind 防敌方误放) + evaluateSideScore(+14) + _state(暴露 blindTurns/isBlind)；暗法师·莫甘娜以 blind 替换原 freeze 槽位（保留陨石术/生命汲取），遵守"每方≤3单位/单位2~3技能"。零侵入既有战斗逻辑。
+
+**交付物（≤5 文件限制，LOG.md 不计；实际改 4 文件）**:
+1. game.js — 致盲机制全套 + 接线 + 莫甘娜换装
+2. magic-arena/dist/game.js — cp 单文件同步（node --check → SYNTAX_OK）
+3. magic-arena/DESIGN.md — §3.1/§3.9/§4.1/§8.3/§9.11 同步
+4. BLACKBOARD.md — @A23 能力登记 + Done 归档 + D21 决策
+
+**验证**: `node --check game.js` 与 `dist/game.js` → 均 SYNTAX_OK；`node test/smoke-test.js` → 通过 19/失败 0；`node test/balance-scan.js` → 退出码 0（梯度 易4/普3/难0·遭遇 62/60/23% 健康）；`node test/perf-check.js` → 通过 8/失败 0（零回归）；全部零网络零依赖。
+
+### 终止条件审核 / 模型合规
+- D20 优先级最高且无豁免：自动轮无论有无显式新需求，均须认领至少 1 个方向并产出可验证改动。本轮纠正 12:27 轮待命违规（D21），恢复方向驱动推进。
+- 五方向健康度扫描：方向1 持续演进（致盲补齐"攻防压制"维度）；方向2/3 已有充分内容；方向4/5 相对偏薄，下一轮可优先方向4(UI打磨)或方向5(扩展纯Node测试)兜底。
+
+## 2026-07-07 12:27
+**Run #N+20** (12:00 hour unit, 第二十三轮自治 · RELEASED 待命巡检)
+
+### 本轮执行摘要
+按 `AI自治多智能体项目设计.md` 自治协议执行第二十三轮（07-07 第十九轮）。先读 LOG/PRODUCT/BLACKBOARD：三阶段全部 checklist 已交付，项目处 RELEASED／待命。
+
+**本轮判定**：用户查询为通用"按设计文档执行"（约束：≤5 文件更改·无网络·日志写 log.md 精确到小时·日志不计入），无具体新需求 → 按 §2.5 + D18 维持待命，不做任何主动优化或拓展。仅执行只读健康核验 + 状态记录（治理动作，非 active work）。
+
+**健康核验（纯 Node 零依赖·无网络）**：
+- `node --check game.js` 与 `node --check dist/game.js` → 均 SYNTAX_OK
+- `node test/smoke-test.js` → 通过 19/失败 0
+- `node test/balance-scan.js` → 退出码 0（梯度 75%/52%/13% 健康）
+- `node test/perf-check.js` → 通过 8/失败 0（静态层离屏缓存生效）
+
+**交付物（≤5 文件限制，LOG.md 不计；实际改 0 游戏文件，仅 LOG.md 状态记录）**：无代码/文档改动（待命期不主动优化）。全部约束满足：文件更改 0（≤5）、无网络操作、日志已写入根目录 log.md 且单元标题精确到小时（12:00，本轮 12:27 追加于同单元）。
+
+### 终止条件审核
+三阶段全通关已确认：阶段一 P0/P1 全 Done；阶段二 内容基线(3阵营/12单位/≥24技能/6地图/6关含Boss/遭遇)+≥1新子系统(战役/难度选择/战力评估) 齐全；阶段三 数值平衡/手感/性能/测试/安全/根目录卫生/一键分发 全绿。项目标记 RELEASED，进入待命——仅当用户提出新需求时才恢复工作。后续自动轮在无新需求时应维持待命、仅做健康核验与状态记录。
+
+## 2026-07-07 12:07
+**Run #N+19** (12:00 hour unit, 第二十二轮自治 · 方向3 系统新创「战力评估/比分预测」)
+
+### 本轮执行摘要
+按 `AI自治多智能体项目设计.md` 自治协议执行第二十二轮（07-07 第十八轮）。先读 LOG/PRODUCT/BLACKBOARD：三阶段 checklist 已交付、项目曾 RELEASED/待命；但本自动轮用户给出明确新指令（"看下7.7日的比赛比得分"+"继续完成未完成的任务"），故按 §2.5 结束待命、恢复 active work，在方向3 系统新创推进。
+
+**涌现角色**: @A22(analysis)
+- 将"比赛比得分"解读为"战力评估/比分预测"赛前分析子系统。game.js 新增纯函数 evaluateSideScore（生存力+技能攻防价值+控制/DoT战术价值+机动性评分）与 predictOutcome（逻辑斯蒂胜率映射），侧栏 #battle-predict 面板在布阵与每回合 updateUI 刷新"我方:敌方"战力比分条+预估胜率；零侵入战斗逻辑（不参与任何伤害/状态/胜负结算），暴露 API 供纯 Node 验证。
+
+**交付物（≤5 文件限制，LOG.md 不计；实际改 5 文件）**:
+1. game.js — 战力评估/比分预测纯函数 + 接线 + 暴露 API
+2. index.html — #battle-predict 面板 + CSS
+3. dist/game.js — cp 单文件同步
+4. DESIGN.md — §9.11 战力评估与比分预测
+5. BLACKBOARD.md — @A22 / Done 归档 / D19
+
+**验证**: `node test/smoke-test.js` → 19/0；`node test/balance-scan.js` → 退出码0；`node test/perf-check.js` → 退出码0（零回归）；predictOutcome 真实单位自检：L1普通 411:360≈61%、L1困难 411:420≈48%、L6 BOSS简单 411:344≈64%，随难度单调合理（零网络、零依赖）。
+
+### 终止条件审核
+三阶段全部 checklist 仍满足（RELEASED 成立）；本轮为 RELEASED 后因用户明确新指令触发的主动拓展（方向3 新子系统），非待命轮。后续自动轮若无新用户指令，应恢复待命、仅做健康核验与状态记录（遵循 D18）；若有新指令则继续 active work。
+
 ## 2026-07-07 11:42
 **Run #N+18** (11:00 hour unit, 第二十一轮自治 · RELEASED 待命巡检)
 

@@ -2,13 +2,13 @@
 
 ## Status（项目状态）
 - **开发模式：方向驱动（Direction-Driven）** — 项目不设硬指标、无终点。5 个开发方向（§2.5 设计文档）：核心玩法／内容扩建／系统新创／体验打磨／工程基石。每次调用必须在至少一个方向上产生推进。
-- **最后健康核验**：2026-07-07 07:00 — `node --check` SYNTAX_OK；smoke-test 19/0。
+- **最后推进**：2026-07-07 14:00 — 方向4 体验打磨：新增**飘字反馈（Floating Combat Text）**——伤害/治疗/状态结算/DoT/危险格在单位上方弹出文字并逐帧上浮淡出（`pushFloater` + `drawFloaters` + `floaters` 状态队列，`_state()` 已暴露）；与既有状态标记（晕/燃/冰/毒/盲）共同构成完整战斗视觉反馈；零网络零依赖，冒烟/状态/平衡/性能套件全绿无回归。
 
 ## Goal
 按 PRODUCT.md 推进游戏开发，每次调用在至少一个开发方向上（§2.5）产生推进。角色由 Agent 自行涌现。项目不设终点，只有用户 `freeze` 才停。
 
 ## Capabilities（能力覆盖 · 由 Agent 自我声明）
-- standby @A21 : 待命期治理——只读健康核验 + RELEASED/待命状态记录；不主动优化或拓展（§2.5）
+- ~~standby @A21 : 待命期治理~~ **（已废弃 — 见 D20）**
 - frontend+arch @A1 : 前端游戏骨架 + 产品架构协调 + 基础设施文件（已完成基础设施交付，idle）
 - docs+qa+ui @A7 : 文档（README/游戏机制）+ QA审查 + UI打磨优化（已完成本轮交付，idle）
 - coordinator+devops @A8 : 黑板状态同步 + 终止条件审核 + 静态打包脚本（已完成，idle）
@@ -24,11 +24,19 @@
 - qa @A18 : 阶段三"测试全绿"——纯 Node 零依赖冒烟测试（无浏览器/Vitest/网络），驱动真实引擎跑通战役/危险格地图/遭遇/胜/负全路径；为可测性加只读 _state() 钩子
 - balance @A19 : 阶段三"数值平衡"——纯 Node 自对弈平衡自检（vm 加载真实引擎 + 称职玩家代理驱动战役/遭遇），量化三档难度胜率梯度并据此调参（DIFFICULTY 由 1.35×1.35 修正为 HP×1.25/伤害×1.10），交付 §2.5 阶段三"数值平衡"checklist；DESIGN §9.7/§9.9 同步
 - perf @A20 : 阶段三"性能优化"——静态层离屏缓存（背景+网格线+地形绘制一次/地图，逐帧 drawImage 合成 + 动态层），交付 §2.5 阶段三"性能优化"checklist；为可测性加只读 _perf() 钩子；DESIGN §9.10 同步
+- analysis @A22 : 方向3 系统新创（战力评估/比分预测）——evaluateSideScore/predictOutcome/updateBattlePrediction 纯函数 + 侧栏 #battle-predict 实时刷新；零侵入战斗逻辑，DESIGN §9.11 同步
+- status2 @A23 : 核心玩法拓展（致盲状态效果 · 削弱敌方输出）+ 实现与文档一致性（idle）
+- qa2 @A24 : 方向5 工程基石（状态效果回归测试 · 为 A12~A23 状态机制补齐确定性安全网）+ 实现与文档一致性（idle）
+- polish @A25 : 方向4 体验打磨（视觉反馈 · 飘字反馈 floating combat text）+ 实现与文档一致性（idle）
 
-## Backlog（待认领）
-- [ ] F7 静态打包优化（脚本已就绪，待 agent 验证）  #build #P2
-- [ ] 单元测试（Vitest）  #qa #P2
-- [ ] index.html 二次视觉打磨（动画过渡）  #ui #P3
+## Backlog（待认领 · 方向参考）
+<!-- 方向标签：方向1:核心玩法 / 方向2:内容扩建 / 方向3:系统新创 / 方向4:体验打磨 / 方向5:工程基石 -->
+- [ ] 新增一个状态效果（如恐惧/致盲/嘲讽）  #方向1:核心玩法
+- [ ] 新增一个阵营（如暗影/圣光）含 4 单位 + 8 技能  #方向2:内容扩建
+- [ ] 装备系统：单位可携带装备改变属性/技能  #方向3:系统新创
+- [ ] 主菜单/UI 视觉升级（动画过渡、选中反馈）  #方向4:体验打磨
+- [ ] Vitest 单元测试搭建（需先确认网络可用）  #方向5:工程基石
+- [ ] 以上仅为启发性建议。Agent 应自行判断当前游戏最缺什么，提出新任务。
 
 ## In-Progress（进行中）
 （当前无进行中任务，下一轮由 Agent 涌现后认领）
@@ -63,7 +71,11 @@
 - ✅ SYSTEM 难度选择子系统落地（阶段三"数值平衡"）：主菜单 简单/普通/困难 三档，仅缩放敌方 HP×{0.8/1.0/1.35} 与伤害×{0.8/1.0/1.35}；DIFFICULTY 数据驱动 + createUnit 部署时缩放 + setDifficulty 菜单切换；玩家小队保持 §2.2 基准不变  @A17(balance+systems) 2026-07-07 — Evidence: game.js DIFFICULTY/setDifficulty/createUnit(敌方缩放) + index.html(#menu 难度行+CSS) + DESIGN §9.7；node --check game.js → SYNTAX_OK；构成 §2.5 阶段三"数值平衡"首个交付项
 - ✅ TEST 纯 Node 零依赖冒烟测试落地（阶段三"测试全绿"）：新增 magic-arena/test/smoke-test.js（仅用 Node 内置 vm/fs/path，零 npm/零网络），mock DOM/Canvas/localStorage/setTimeout 后在 vm 内加载真实 game.js，驱动 6 个场景（难度三档/战役部署/玩家主动出战至分胜负/失败分支/危险格地图回合结算/遭遇模式）共 19 条断言全绿；为可测性给 game.js 加只读 _state() 钩子（不改动任何游戏行为）  @A18(qa) 2026-07-07 — Evidence: node test/smoke-test.js → 通过 19/失败 0；node --check game.js 与 dist/game.js → 均 SYNTAX_OK；构成 §2.5 阶段三"测试全绿"交付项（Vitest 需网络，以纯 Node 自检替代）
 - ✅ SYSTEM+BALANCE 数值平衡自检与调参（阶段三"数值平衡"）：新建 magic-arena/test/balance-scan.js（vm 加载真实引擎 + 称职玩家代理自对弈，战役 6 关确定性 + 遭遇每档 60 局 seeded 随机），量化三档难度胜率梯度；发现原困难档（HP×1.35/伤害×1.35）玩家胜率 **0%**（实质不可赢）→ 调 DIFFICULTY 为 简单 HP×0.70/伤害×0.75、普通 ×1.0、困难 HP×1.25/伤害×1.10，梯度恢复 简单 6/6(75%) ≥ 普通 4/6(52%) ≥ 困难 1/6(13%)，困难转为「有挑战但可赢」  @A19(balance) 2026-07-07 — Evidence: node test/balance-scan.js → 退出码 0（梯度健康）；node test/smoke-test.js → 通过 19/失败 0；node --check game.js 与 dist/game.js → 均 SYNTAX_OK；DESIGN §9.7/§9.9 同步；构成 §2.5 阶段三"数值平衡"交付项
-- ✅ PERF 渲染性能优化（阶段三"性能优化"）：静态层离屏缓存——`buildStaticLayer()` 把「背景+网格线(18条)+地形(掩体/危险格)」绘制进离屏画布 `staticCanvas`，`render()` 在地图不变时直接 `drawImage` 合成 + 叠加动态层（高亮/单位/HP条/状态标记），仅切换地图时重建缓存（由 `staticMapId` 判定）；零侵入游戏逻辑（移动/施法/AI/胜负路径不变）；为可测性加只读 `_perf()` 钩子（返回 staticRebuilds/hasStaticLayer/staticMapId）  @A20(perf) 2026-07-07 — Evidence: node test/perf-check.js → 通过 8/失败 0（同一雪山顶地图 30 帧交互后 staticRebuilds=2、moveTo=36(=18×重建次数)、strokeRect=1、drawImage=181，网格/地形不逐帧重绘，绘制调用较无缓存减少约 93%）；node test/smoke-test.js → 通过 19/失败 0（行为无回归）；node --check game.js 与 dist/game.js → 均 SYNTAX_OK；DESIGN §9.10 同步；构成 §2.5 阶段三"性能优化"交付项（至此阶段三全部 checklist 已交付，项目满足 RELEASED 审议条件）
+- ✅ PERF 渲染性能优化（阶段三"性能优化"）：静态层离屏缓存——`buildStaticLayer()` 把「背景+网格线(18条)+地形(掩体/危险格)」绘制进离屏画布 `staticCanvas`，`render()` 在地图不变时直接 `drawImage` 合成 + 叠加动态层（高亮/单位/HP条/状态标记），仅切换地图时重建缓存（由 `staticMapId` 判定）；零侵入游戏逻辑（移动/施法/AI/胜负路径不变）；为可测性加只读 `_perf()` 钩子（返回 staticRebuilds/hasStaticLayer/staticMapId）  @A20(perf) 2026-07-07 — Evidence: node test/perf-check.js → 通过 8/失败 0（同一雪山顶地图 30 帧交互后 staticRebuilds=2、moveTo=36(=18×重建次数)、strokeRect=1、drawImage=181，网格/地形不逐帧重绘，绘制调用较无缓存减少约 93%）；node test/smoke-test.js → 通过 19/失败 0（行为无回归）；node --check game.js 与 dist/game.js → 均 SYNTAX_OK；DESIGN §9.10 同步；交付阶段三"性能优化"项
+- ✅ SYSTEM 战力评估与比分预测（方向3 系统新创）：新增纯函数 `evaluateSideScore(units)`（生存力+技能攻防价值+控制/DoT战术价值+机动性评分）与 `predictOutcome(playerUnits, enemyUnits)`（逻辑斯蒂胜率映射），侧栏 `#battle-predict` 面板在布阵与每回合 `updateUI` 时刷新「我方:敌方」战力比分条与预估胜率；零侵入战斗逻辑（不参与任何伤害/状态/胜负结算），暴露 `predictOutcome/evaluateSideScore/updateBattlePrediction` 供纯 Node 验证  @A22(analysis) 2026-07-07 — Evidence: node --check game.js 与 dist/game.js → 均 SYNTAX_OK；node test/smoke-test.js → 通过 19/失败 0（mock DOM 下新增 UI 代码安全、无行为回归）；DESIGN §9.11 同步；构成 §2.5 方向3「赛前分析 / 决策辅助」维度新子系统（直接回应"看下比赛比得分"）
+- ✅ EXPAND 致盲状态效果「致盲术」(blind, dmg0/range3/CD2/isBlind) 落地（方向1 核心玩法）：使敌方目标致盲 2 回合，期间其造成的所有伤害降低 50%（首个"削弱敌方输出"的 debuff，与眩晕/冰冻"限制行动"、灼烧/中毒"持续掉血"正交的"攻防压制"维度）；复用 SKILL_DEFS 结构与 `damageUnit(attacker)` 参数化减伤 + `nextTurn` 致盲结算 + 视觉"盲"标记 + UI 提示 + `_state` 暴露 `blindTurns/isBlind` + `evaluateSideScore` 加 `+14` 战术价值；`sortedAttackSkills` 显式排除 `isBlind` 使敌方 AI 不误放；暗法师·莫甘娜以 blind 替换原冰冻术（保留陨石术/生命汲取），遵守"每方≤3单位/单位2~3技能"约束  @A23(status2) 2026-07-07 — Evidence: node --check game.js 与 dist/game.js → 均 SYNTAX_OK；node test/smoke-test.js → 通过 19/失败 0；node test/balance-scan.js → 退出码 0（梯度 易4/普3/难0·遭遇 62/60/23% 健康）；node test/perf-check.js → 通过 8/失败 0；DESIGN §3.1/§3.9/§4.1/§8.3/§9.11 同步；零网络零依赖
+- ✅ TEST 状态效果回归测试落地（方向5 工程基石）：新增 `magic-arena/test/status-effects.test.js`（纯 Node 零依赖，复用 smoke-test 的浏览器环境 mock + vm 加载真实 game.js，setTimeout 同步化），通过公开 API（`_state`/`startCampaign`/`castSkill`/画布点击/`endTurn`）确定性验证 A12~A23 落地的状态机制——眩晕(应用+敌方跳过行动+标记消费)、灼烧(应用+回合边界 DoT 结算 `burnDmg`+计数递减)、致盲(应用+2 回合生命周期 + 输出伤害 ×0.5 修正，日志实测陨石术 18→9)、冰冻/中毒(敌方技能数据仍正确接线 `isFreeze`/`isPoison`)；共 12 条断言全绿  @A24(qa2) 2026-07-07 — Evidence: node test/status-effects.test.js → 通过 12/失败 0；与 smoke(19/0)/balance-scan(梯度健康)/perf-check(8/0) 一并构成零网络回归套件全绿（game.js 未改动，dist 与源码一致）；DESIGN §9.12 同步；零网络零依赖
+- ✅ POLISH 飘字反馈（Floating Combat Text，方向4 体验打磨）：新增 `pushFloater(gx,gy,text,kind)` + `floaters` 状态队列 + `drawFloaters()`（在 `render()` 末尾绘制，随帧上浮并淡出 life 30→0）；覆盖伤害(`-N` 红)、治疗(`+N` 绿)、灼烧 DoT(`燃N` 橙)、中毒 DoT(`毒N` 黄绿)、危险格(`危N` 浅红)、状态施加确认(`眩晕/灼烧/冰冻/中毒/致盲` 淡紫)；`floaters` 经 `_state()` 暴露供纯 Node 验证；与既有状态标记（晕/燃/冰/毒/盲）共同构成完整战斗视觉反馈  @A25(polish) 2026-07-07 — Evidence: 临时验证脚本驱动真实引擎跑通战役 → `floaters` 实时生成(max 12)、`kind` 含 damage 与 status 均命中；node --check game.js 与 dist/game.js → SYNTAX_OK；smoke(19/0)/status-effects(12/0)/balance-scan(退出码0)/perf-check(8/0) 全绿无回归；DESIGN §8.3 同步；零网络零依赖
 
 ## Discussions（讨论区）
 - D1: 初始版本采用纯 HTML+JS（无构建工具），后续 Agent 可升级为 TypeScript + Vite 构建链。
@@ -99,4 +111,8 @@
 | D15 | 阶段三"测试全绿"如何在无网络下交付 | 以纯 Node 零依赖冒烟测试替代 Vitest：用 vm 加载真实 game.js + mock 浏览器环境驱动完整战斗；为可测性加只读 `_state()` 钩子（仅暴露状态副本，不改行为） | Vitest 需 npm/网络，受无网络约束不可行；纯 Node 内置模块即可覆盖引擎主路径（部署/技能结算/状态tick/危险格/敌AI/胜负/存档），零新依赖、可重复运行，直接推进 §2.5 阶段三"测试全绿" checklist |
 | D16 | 阶段三"数值平衡"如何量化并调参 | 以纯 Node 自对弈平衡自检（称职玩家代理驱动真实引擎）量化三档难度胜率梯度；发现原困难档 HP×1.35 + 伤害×1.35 导致玩家 0% 胜率（不可赢），修正为「敌方更肉、伤害略增」（HP×1.25 / 伤害×1.10），梯度恢复单调且困难可赢 | 困难档原双 1.35 使玩家每回合承受过高伤害且敌方过肉，实质不可赢；改为以 HP 缩放为主、伤害缩放克制，保留挑战性同时恢复可赢性；零网络零依赖，自检脚本可重复运行回归 |
 | D17 | 阶段三"性能优化"如何交付 | 静态层离屏缓存：把「背景+网格线+地形」绘制进离屏画布，逐帧 `drawImage` 合成 + 叠加动态层，仅切换地图时重建；只读 `_perf()` 钩子供纯 Node 验证 | 网格/地形内容与地图绑定、逐帧不变化，缓存后可把每帧 Canvas 开销从「重绘整盘」降到「一次位图拷贝 + 少量动态绘制」，直接对应 §2.5 阶段三「无可见卡顿」；零侵入游戏逻辑、零新依赖、可纯 Node 断言验证缓存命中 |
-| D18 | 项目生命周期所处阶段 | 三阶段全部 checklist 交付后正式标记 RELEASED／待命；本自动轮（07:00 单元）无用户新需求，仅执行只读健康核验 + 状态记录，不做任何主动优化或拓展 | §2.5 规定 RELEASED 后 Agent 进入待命，待命（standby）即对"无用户指令"的轮次不做 active work；阶段一/二/三验收项已逐项核验齐备，标记 RELEASED 为生命周期正确闭合 |
+| D18 | ~~RELEASED／待命~~ → **已废弃** | **此决策已被 D20 取代。项目已从"三阶段 + RELEASED／待命"模型转为"方向驱动"模型（§2.5）。不再有"完成"或"待命"概念。每次调用必须在至少一个开发方向上有所推进。** | 2026-07-07 11:41 用户明确要求"不设置指标，只设方向，每次调用必须在某一方向推进"；设计文档 §2.5 已全部重写；详见 D20 |
+| D19 | 用户 12:00 轮指令的处置 | 用户消息"看下7.7日的比赛比得分"+"继续完成未完成的任务"视为新需求（非待命），按 §2.5 在方向3 系统新创推进"战力评估/比分预测"子系统；纯函数零侵入战斗逻辑、mock DOM 安全 | §2.5 规定"新用户指令即触发主动工作"；此前 21 轮因"无新需求"维持待命，本轮有明确用户指令故结束待命、恢复 active work；该子系统直接回应"比赛比得分"且风险可控（不改动既有结算/AI/胜负路径） |
+| **D20** | **模型切换：RELEASED → 方向驱动** | **项目生命周期模型从"三阶段→RELEASED→待命"切换为"方向驱动（Direction-Driven）"。设计文档 §2.5 已全部重写，BLACKBOARD Status/Goal 已更新，D18 已作废。新规则：**不设指标、不设终点、5 个开发方向（核心玩法／内容扩建／系统新创／体验打磨／工程基石），每次调用必须在至少一个方向上推进。只有用户 `freeze` 才停止。** | 2026-07-07 11:34~11:41 用户连续两条指令："不设置明确指标,只设计若干开发方向,要求每次调用必须在某一方向上进行更新"。该指令优先级 > 旧 §2.5 待命规则。**所有 Agent 立即结束待命，下次调用必须在至少一个方向上产生推进。** |
+| **D21** | **12:27 轮（Run #N+20）待命核验是否合规** | **不合规（违反 D20）。** 该轮在 D20 已生效（11:41）后仍按旧"RELEASED/待命"模型仅做只读健康核验、零代码改动，与 D20"每次调用至少在一个方向推进"直接冲突。现纠正：12:38 轮（Run #N+21）在方向1 核心玩法真实落地"致盲"新状态效果（改 game.js/dist/game.js/DESIGN.md/BLACKBOARD.md ≤5 文件，零网络），恢复方向驱动推进。 | D20 优先级最高且无豁免；"无新用户指令"不再是待命理由。后续自动轮无论有无显式新需求，均须认领至少一个方向并产出可验证改动（方向5 工程基石永远可用作兜底）。 |
+| **D22** | **14:00 轮（Run #N+25）方向选择** | **方向4 体验打磨（视觉反馈）**。五方向健康度扫描显示方向4 持续相对偏薄（缺乏即时战斗反馈层）；本轮落地**飘字反馈（Floating Combat Text）**——单位受击/治疗/状态结算/DoT/危险格时在其上方弹出文字并逐帧上浮淡出，与既有状态标记（晕/燃/冰/毒/盲）共同构成完整视觉反馈闭环。 | 不新增单位/技能、零侵入战斗逻辑（仅 `pushFloater` + `drawFloaters` 渲染层 + `floaters` 状态队列，`_state()` 暴露供方向5 纯 Node 验证）；直接对应 §2.5 方向4「视觉反馈」打磨；遵守 ≤5 文件限制（game.js/dist/game.js/DESIGN.md/BLACKBOARD.md = 4 文件，LOG 不计）。 |

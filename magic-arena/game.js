@@ -53,13 +53,14 @@ const Game = (() => {
     burn: { name: '灼烧术', dmg: 0, range: 3, cooldown: 2, desc: '范围3格，点燃敌方目标2回合，每回合受6点燃烧伤害（可叠加，上限4回合）', aoeRadius: 0, isBurn: true, burnTurns: 2, burnDmg: 6 },
     freeze: { name: '冰冻术', dmg: 6, range: 3, cooldown: 2, desc: '范围3格，6伤害并使敌方目标被冰冻、无法移动2回合', aoeRadius: 0, isFreeze: true, freezeTurns: 2 },
     poison: { name: '中毒术', dmg: 4, range: 3, cooldown: 2, desc: '范围3格，造成4直接伤害并使敌方中毒3回合，每回合受4点毒性伤害（可叠加伤害，上限12），中毒期间治疗减半', aoeRadius: 0, isPoison: true, poisonTurns: 3, poisonDmg: 4, poisonMax: 12 },
+    blind: { name: '致盲术', dmg: 0, range: 3, cooldown: 3, desc: '范围3格，使敌方目标致盲2回合，期间其造成的所有伤害降低50%（削弱敌方输出）', aoeRadius: 0, isBlind: true, blindTurns: 2 },
   };
 
   // ---- 玩家单位（固定 3 人小队，含阵营） ----
   const PLAYER_UNITS = [
     { name: '炎法师·艾拉', maxHp: 80, moveRange: 2, faction: 'pyro', skills: ['fireball', 'burn', 'heal'], color: '#66bb6a' },
     { name: '雷法师·特斯拉', maxHp: 70, moveRange: 3, faction: 'cryo', skills: ['lightning', 'stun', 'heal'], color: '#43a047' },
-    { name: '暗法师·莫甘娜', maxHp: 65, moveRange: 2, faction: 'nature', skills: ['meteor', 'drain', 'freeze'], color: '#81c784' },
+    { name: '暗法师·莫甘娜', maxHp: 65, moveRange: 2, faction: 'nature', skills: ['meteor', 'drain', 'blind'], color: '#81c784' },
   ];
 
   // ---- 敌方单位池（可部署，含阵营；单位类型池 ≥12 的基础） ----
@@ -113,6 +114,7 @@ const Game = (() => {
   let selectedUnit = null;
   let phase = 'selectUnit'; // selectUnit | move | selectTarget | enemyTurn | gameOver
   let turnNum = 1;
+  let floaters = []; // 飘字反馈队列（伤害/治疗/状态结算），render 时逐帧上浮淡出
   let playerTurnIndex = 0;
   let moveHighlightCells = [];
   let attackHighlightCells = [];
@@ -157,6 +159,7 @@ const Game = (() => {
       units.push(createUnit(def, 'enemy', 6, [1, 3, 5][i]));
     });
     updateUI();
+    updateBattlePrediction();
     render();
   }
 
@@ -194,6 +197,7 @@ const Game = (() => {
       frozenTurns: 0,
       poisonTurns: 0,
       poisonDmg: 0,
+      blindTurns: 0,
     };
   }
 
@@ -274,10 +278,17 @@ const Game = (() => {
   }
 
   // 承受伤害（掩体减伤）
-  function damageUnit(target, dmg) {
+  // 飘字反馈：在指定格上方弹出一段文字（伤害/治疗/状态结算），render 时上浮淡出
+  function pushFloater(gx, gy, text, kind) {
+    floaters.push({ gx, gy, text, kind: kind || 'damage', life: 30 });
+  }
+
+  function damageUnit(target, dmg, attacker) {
     let actual = dmg;
-    if (coverAt(target.gx, target.gy)) actual = Math.floor(dmg * COVER_REDUCE);
+    if (attacker && attacker.blindTurns > 0) actual = Math.floor(actual * 0.5); // 致盲：输出伤害降低50%
+    if (coverAt(target.gx, target.gy)) actual = Math.floor(actual * COVER_REDUCE);
     target.hp -= actual;
+    pushFloater(target.gx, target.gy, '-' + actual, 'damage');
     return actual;
   }
 
@@ -334,6 +345,7 @@ const Game = (() => {
     if (staticCanvas) ctx.drawImage(staticCanvas, 0, 0);
     drawHighlights();
     drawUnits();
+    drawFloaters();
   }
 
   function drawHighlights() {
@@ -429,7 +441,41 @@ const Game = (() => {
         ctx.textBaseline = 'middle';
         ctx.fillText('毒', px + 30, py);
       }
+      // 致盲标记（左上）
+      if (u.blindTurns > 0) {
+        ctx.fillStyle = '#b39ddb';
+        ctx.font = 'bold 14px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('盲', px - 30, py - 30);
+      }
     });
+  }
+
+  // ---- 飘字反馈渲染（方向4 体验打磨） ----
+  // 每次 render 调用：随存活帧上浮并淡出；life 递减至 0 后移除。
+  function drawFloaters() {
+    for (let i = floaters.length - 1; i >= 0; i--) {
+      const f = floaters[i];
+      const rise = (30 - f.life) * 1.2;              // 越接近消失，上浮越多
+      const px = f.gx * CELL + CELL / 2;
+      const py = f.gy * CELL + CELL / 2 - 30 - rise;
+      let color = '#ff5252';
+      if (f.kind === 'heal') color = '#69f0ae';
+      else if (f.kind === 'burn') color = '#ff7043';
+      else if (f.kind === 'poison') color = '#cddc39';
+      else if (f.kind === 'hazard') color = '#ff8a80';
+      else if (f.kind === 'status') color = '#e0a0ff';
+      ctx.globalAlpha = Math.max(0, Math.min(1, f.life / 30));
+      ctx.fillStyle = color;
+      ctx.font = 'bold 18px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(f.text, px, py);
+      ctx.globalAlpha = 1;
+      f.life--;
+      if (f.life <= 0) floaters.splice(i, 1);
+    }
   }
 
   // ---- 点击处理 ----
@@ -543,6 +589,13 @@ const Game = (() => {
         addLog(`${selectedUnit.name} 取消施放 ${activeSkill.name}（无效目标：需选敌方）`, 'info');
         attackHighlightCells = []; activeSkill = null; phase = 'selectUnit'; updateUI(); render(); return;
       }
+    } else if (activeSkill.isBlind) {
+      if (target && target.team !== selectedUnit.team) {
+        applySkill(selectedUnit, gx, gy, activeSkill);
+      } else {
+        addLog(`${selectedUnit.name} 取消施放 ${activeSkill.name}（无效目标：需选敌方）`, 'info');
+        attackHighlightCells = []; activeSkill = null; phase = 'selectUnit'; updateUI(); render(); return;
+      }
     } else {
       // 单体或范围伤害：以点击格为中心；范围技能会波及周围敌方（含空地中心）
       applySkill(selectedUnit, gx, gy, activeSkill);
@@ -572,6 +625,7 @@ const Game = (() => {
         poisonNote = '（中毒·治疗减半）';
       }
       t.hp = Math.min(t.maxHp, t.hp + actualHeal);
+      pushFloater(t.gx, t.gy, '+' + actualHeal, 'heal');
       addLog(`${attacker.name} 对 ${t.name} 施放 ${skill.name}，回复 ${actualHeal} HP${poisonNote}`, 'heal');
       skill.cd = skill.cooldown;
       return;
@@ -581,6 +635,7 @@ const Game = (() => {
       const t = getUnitAt(gx, gy);
       if (!t || t.team === attacker.team) { skill.cd = 0; return; } // 安全兜底
       t.stunned = true;
+      pushFloater(t.gx, t.gy, '眩晕', 'status');
       addLog(`${attacker.name} 对 ${t.name} 施放 ${skill.name}，目标下回合将被眩晕`, 'damage');
       skill.cd = skill.cooldown;
       return;
@@ -591,6 +646,7 @@ const Game = (() => {
       if (!t || t.team === attacker.team) { skill.cd = 0; return; }
       t.burnTurns = Math.min(t.burnTurns + skill.burnTurns, 4);
       t.burnDmg = Math.max(t.burnDmg, skill.burnDmg);
+      pushFloater(t.gx, t.gy, '灼烧', 'status');
       addLog(`${attacker.name} 对 ${t.name} 施放 ${skill.name}，目标被点燃（剩余 ${t.burnTurns} 回合）`, 'damage');
       skill.cd = skill.cooldown;
       return;
@@ -599,8 +655,9 @@ const Game = (() => {
     if (skill.isFreeze) {
       const t = getUnitAt(gx, gy);
       if (!t || t.team === attacker.team) { skill.cd = 0; return; }
-      const dealt = damageUnit(t, skill.dmg);
+      const dealt = damageUnit(t, skill.dmg, attacker);
       t.frozenTurns = Math.max(t.frozenTurns, skill.freezeTurns);
+      pushFloater(t.gx, t.gy, '冰冻', 'status');
       addLog(`${attacker.name} 对 ${t.name} 施放 ${skill.name}，造成 ${dealt} 伤害并使其被冰冻（剩余 ${t.frozenTurns} 回合无法移动）`, 'damage');
       skill.cd = skill.cooldown;
       return;
@@ -612,7 +669,18 @@ const Game = (() => {
       const dealt = damageUnit(t, skill.dmg);
       t.poisonTurns = skill.poisonTurns; // 刷新中毒持续回合
       t.poisonDmg = Math.min(t.poisonDmg + skill.poisonDmg, skill.poisonMax); // 叠加毒性伤害（上限）
+      pushFloater(t.gx, t.gy, '中毒', 'status');
       addLog(`${attacker.name} 对 ${t.name} 施放 ${skill.name}，造成 ${dealt} 直接伤害并使其中毒（剩余 ${t.poisonTurns} 回合·每回合 ${t.poisonDmg} 伤害·治疗减半）`, 'damage');
+      skill.cd = skill.cooldown;
+      return;
+    }
+    // 致盲（削弱敌方输出：致盲期间其造成的伤害降低50%）
+    if (skill.isBlind) {
+      const t = getUnitAt(gx, gy);
+      if (!t || t.team === attacker.team) { skill.cd = 0; return; }
+      t.blindTurns = Math.max(t.blindTurns, skill.blindTurns);
+      pushFloater(t.gx, t.gy, '致盲', 'status');
+      addLog(`${attacker.name} 对 ${t.name} 施放 ${skill.name}，目标被致盲（剩余 ${t.blindTurns} 回合·伤害降低50%）`, 'damage');
       skill.cd = skill.cooldown;
       return;
     }
@@ -623,7 +691,7 @@ const Game = (() => {
         addLog(`${attacker.name} 对 (${gx},${gy}) 施放 ${skill.name}，未命中任何敌方单位`, 'info');
       } else {
         hits.forEach(t => {
-          const dealt = damageUnit(t, skill.dmg);
+          const dealt = damageUnit(t, skill.dmg, attacker);
           addLog(`${attacker.name} 的 ${skill.name} 波及 ${t.name}，造成 ${dealt} 伤害（剩余 ${Math.max(0, t.hp)} HP）`, 'damage');
         });
         if (skill.selfHeal) {
@@ -641,7 +709,7 @@ const Game = (() => {
       skill.cd = skill.cooldown;
       return;
     }
-    const dealt = damageUnit(t, skill.dmg);
+    const dealt = damageUnit(t, skill.dmg, attacker);
     addLog(`${attacker.name} 对 ${t.name} 施放 ${skill.name}，造成 ${dealt} 伤害（剩余 ${Math.max(0, t.hp)} HP）`, 'damage');
     if (skill.selfHeal) {
       attacker.hp = Math.min(attacker.maxHp, attacker.hp + skill.selfHeal);
@@ -763,7 +831,7 @@ const Game = (() => {
 
   // 按阵营风格排序攻击技能：skirmish 优先控制技，其余按伤害降序
   function sortedAttackSkills(unit, style) {
-    const list = unit.skills.filter(s => s.cd <= 0 && !s.isHeal);
+    const list = unit.skills.filter(s => s.cd <= 0 && !s.isHeal && !s.isBlind);
     if (style === 'skirmish') {
       const ctrl = s => (s.isStun ? 1 : 0) + (s.isFreeze ? 1 : 0) + (s.isPoison ? 1 : 0);
       return list.sort((a, b) => ctrl(b) - ctrl(a) || b.dmg - a.dmg);
@@ -879,13 +947,19 @@ const Game = (() => {
         const d = u.burnDmg;
         u.hp -= d;
         u.burnTurns--;
+        pushFloater(u.gx, u.gy, '燃' + d, 'burn');
         addLog(`${u.name} 受到燃烧伤害 ${d}（剩余 ${u.burnTurns} 回合）`, 'damage');
       }
       if (u.poisonTurns > 0) {
         const d = u.poisonDmg;
         u.hp -= d;
         u.poisonTurns--;
+        pushFloater(u.gx, u.gy, '毒' + d, 'poison');
         addLog(`${u.name} 受到毒性伤害 ${d}（剩余 ${u.poisonTurns} 回合）`, 'damage');
+      }
+      if (u.blindTurns > 0) {
+        u.blindTurns--;
+        if (u.blindTurns === 0) addLog(`${u.name} 致盲解除，伤害恢复`, 'info');
       }
       if (u.frozenTurns > 0) {
         u.frozenTurns--;
@@ -894,6 +968,7 @@ const Game = (() => {
       // 危险格环境伤害（不区分阵营）
       if (u.hp > 0 && hazardAt(u.gx, u.gy)) {
         u.hp -= HAZARD_DMG;
+        pushFloater(u.gx, u.gy, '危' + HAZARD_DMG, 'hazard');
         addLog(`${u.name} 处于危险格，受到 ${HAZARD_DMG} 点环境伤害`, 'damage');
       }
     });
@@ -996,7 +1071,7 @@ const Game = (() => {
     const hpText = document.getElementById('hp-text');
     if (selectedUnit) {
       const factionName = (selectedUnit.faction && FACTIONS[selectedUnit.faction]) ? FACTIONS[selectedUnit.faction].name : '—';
-      detailEl.innerHTML = `<strong>${selectedUnit.name}</strong>${selectedUnit.isBoss ? ' <span style="color:#ffd54f">★BOSS</span>' : ''}<br>阵营: ${factionName}<br>团队: ${selectedUnit.team === 'player' ? '玩家' : '敌方'}<br>位置: (${selectedUnit.gx},${selectedUnit.gy})${selectedUnit.stunned ? '<br><span style="color:#e0a0ff">⚡ 眩晕中</span>' : ''}${selectedUnit.burnTurns > 0 ? '<br><span style="color:#ff7043">🔥 灼烧中(' + selectedUnit.burnTurns + '回合)</span>' : ''}${selectedUnit.frozenTurns > 0 ? '<br><span style="color:#4fc3f7">❄ 冰冻中(' + selectedUnit.frozenTurns + '回合·无法移动)</span>' : ''}${selectedUnit.poisonTurns > 0 ? '<br><span style="color:#9e9d24">☠ 中毒中(' + selectedUnit.poisonTurns + '回合·治疗减半)</span>' : ''}`;
+      detailEl.innerHTML = `<strong>${selectedUnit.name}</strong>${selectedUnit.isBoss ? ' <span style="color:#ffd54f">★BOSS</span>' : ''}<br>阵营: ${factionName}<br>团队: ${selectedUnit.team === 'player' ? '玩家' : '敌方'}<br>位置: (${selectedUnit.gx},${selectedUnit.gy})${selectedUnit.stunned ? '<br><span style="color:#e0a0ff">⚡ 眩晕中</span>' : ''}${selectedUnit.burnTurns > 0 ? '<br><span style="color:#ff7043">🔥 灼烧中(' + selectedUnit.burnTurns + '回合)</span>' : ''}${selectedUnit.frozenTurns > 0 ? '<br><span style="color:#4fc3f7">❄ 冰冻中(' + selectedUnit.frozenTurns + '回合·无法移动)</span>' : ''}${selectedUnit.poisonTurns > 0 ? '<br><span style="color:#9e9d24">☠ 中毒中(' + selectedUnit.poisonTurns + '回合·治疗减半)</span>' : ''}${selectedUnit.blindTurns > 0 ? '<br><span style="color:#b39ddb">👁 致盲中(' + selectedUnit.blindTurns + '回合·伤害降低50%)</span>' : ''}`;
       const ratio = Math.max(0, selectedUnit.hp / selectedUnit.maxHp) * 100;
       hpFill.style.width = ratio + '%';
       hpFill.className = 'hp-fill ' + (selectedUnit.team === 'player' ? 'player' : 'enemy');
@@ -1030,6 +1105,9 @@ const Game = (() => {
     // 战绩
     document.getElementById('win-count').textContent = saveData.wins;
     document.getElementById('lose-count').textContent = saveData.losses;
+
+    // 战力评估 / 比分预测（实时刷新）
+    updateBattlePrediction();
   }
 
   // ---- 日志 ----
@@ -1082,6 +1160,59 @@ const Game = (() => {
     render();
   }
 
+  // ---- 战力评估 / 比分预测（方向3 系统新创 · 纯函数 · 零侵入战斗逻辑） ----
+  // 在进入战斗前给出双方战力评分与胜率预测，让玩家"看下比赛比得分"再决定是否开打。
+  // 仅读取单位快照（maxHp / skills / moveRange），不参与任何伤害 / 状态 / 胜负结算路径；
+  // 暴露 predictOutcome / evaluateSideScore 供纯 Node 验证（无需浏览器）。
+  function evaluateSideScore(list) {
+    return (list || []).reduce((sum, u) => {
+      if (!u || u.hp <= 0) return sum;
+      let s = u.maxHp; // 生存力：血量即抗压资本
+      (u.skills || []).forEach(sk => {
+        if (sk.isHeal) {
+          s += Math.abs(sk.dmg) * 1.5; // 治疗 = 续航价值
+        } else {
+          const rangeFactor = (sk.range || 1) / 3;          // 射程越远覆盖越好
+          const cdFactor = 1 / ((sk.cooldown || 0) + 1);    // 冷却越短出手越密
+          const aoeBonus = sk.aoeRadius > 0 ? sk.dmg * 0.5 : 0;
+          s += (sk.dmg + aoeBonus) * rangeFactor * cdFactor;
+        }
+        if (sk.isStun || sk.isFreeze) s += 20;  // 控制价值
+        if (sk.isBurn || sk.isPoison) s += 12;  // 持续伤害(DoT)价值
+        if (sk.isBlind) s += 14;  // 致盲：削弱敌方输出价值
+      });
+      s += (u.moveRange || 0) * 5; // 机动性
+      return sum + s;
+    }, 0);
+  }
+
+  function predictOutcome(playerUnits, enemyUnits) {
+    const ps = evaluateSideScore(playerUnits);
+    const es = evaluateSideScore(enemyUnits);
+    const scale = Math.max(30, (ps + es) * 0.15);
+    const pWin = 1 / (1 + Math.exp(-(ps - es) / scale)); // 逻辑斯蒂：分差越大胜率越极端
+    return { playerScore: Math.round(ps), enemyScore: Math.round(es), playerWinProb: Math.round(pWin * 100) };
+  }
+
+  function updateBattlePrediction() {
+    const el = document.getElementById('battle-predict');
+    if (!el) return;
+    if (!units || units.length === 0 || phase === 'gameOver') { el.innerHTML = ''; return; }
+    const ps = units.filter(u => u.team === 'player' && u.hp > 0);
+    const es = units.filter(u => u.team === 'enemy' && u.hp > 0);
+    if (ps.length === 0 || es.length === 0) { el.innerHTML = ''; return; }
+    const r = predictOutcome(ps, es);
+    const total = r.playerScore + r.enemyScore || 1;
+    const pPct = Math.round(r.playerScore / total * 100);
+    el.innerHTML =
+      '<div style="font-size:13px;color:#f0c27f;margin-bottom:6px;">⚖ 战力预测（比分）</div>' +
+      '<div style="font-size:12px;display:flex;justify-content:space-between;margin-bottom:4px;">' +
+        '<span style="color:#4caf50;">我方 ' + r.playerScore + '</span>' +
+        '<span style="color:#f44336;">敌方 ' + r.enemyScore + '</span></div>' +
+      '<div style="height:8px;border-radius:4px;background:linear-gradient(90deg,#4caf50 0%,#4caf50 ' + pPct + '%,#f44336 ' + pPct + '%,#f44336 100%);"></div>' +
+      '<div style="font-size:12px;color:#a0d0ff;margin-top:4px;">预估胜率 ≈ ' + r.playerWinProb + '%</div>';
+  }
+
   // ---- 性能自检钩子（Stage 3 · 性能优化 · 零侵入只读） ----
   // 仅暴露静态层缓存统计，供纯 Node 性能验证（无浏览器）断言；
   // 不修改任何游戏行为，浏览器运行时无副作用。
@@ -1100,15 +1231,16 @@ const Game = (() => {
       phase, turnNum, gameMode, difficulty, currentCampaignLevel,
       currentMap: currentMap ? { id: currentMap.id, name: currentMap.name, cover: currentMap.cover, hazard: currentMap.hazard } : null,
       saveData: { ...saveData },
+      floaters: floaters.map(f => ({ gx: f.gx, gy: f.gy, text: f.text, kind: f.kind, life: f.life })),
       units: units.map(u => ({
         id: u.id, name: u.name, team: u.team, faction: u.faction, isBoss: u.isBoss,
         hp: u.hp, maxHp: u.maxHp, gx: u.gx, gy: u.gy, moveRange: u.moveRange,
-        acted: u.acted, stunned: u.stunned, burnTurns: u.burnTurns, frozenTurns: u.frozenTurns, poisonTurns: u.poisonTurns,
-        skills: u.skills.map(s => ({ key: s.key, name: s.name, dmg: s.dmg, range: s.range, cooldown: s.cooldown, cd: s.cd, isHeal: !!s.isHeal, isStun: !!s.isStun, isBurn: !!s.isBurn, isFreeze: !!s.isFreeze, isPoison: !!s.isPoison, aoeRadius: s.aoeRadius })),
+        acted: u.acted, stunned: u.stunned, burnTurns: u.burnTurns, frozenTurns: u.frozenTurns, poisonTurns: u.poisonTurns, blindTurns: u.blindTurns,
+        skills: u.skills.map(s => ({ key: s.key, name: s.name, dmg: s.dmg, range: s.range, cooldown: s.cooldown, cd: s.cd, isHeal: !!s.isHeal, isStun: !!s.isStun, isBurn: !!s.isBurn, isFreeze: !!s.isFreeze, isPoison: !!s.isPoison, isBlind: !!s.isBlind, aoeRadius: s.aoeRadius })),
       })),
     };
   }
 
   // 暴露给 HTML onclick 的方法
-  return { startMove, endTurn, skipUnit, castSkill, restart, closeOverlay, cancelAction, startCampaign, startSkirmish, showMenu, setDifficulty, _state, _perf };
+  return { startMove, endTurn, skipUnit, castSkill, restart, closeOverlay, cancelAction, startCampaign, startSkirmish, showMenu, setDifficulty, _state, _perf, evaluateSideScore, predictOutcome, updateBattlePrediction };
 })();

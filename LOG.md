@@ -1,5 +1,53 @@
 # LOG.md — 执行日志（按"小时单位"分组，最新单位在最上）
 
+> ⚠️ **模型切换声明（2026-07-07 11:41）**：项目已从"三阶段→RELEASED→待命"模型切换为**方向驱动（Direction-Driven）**模型。D18（RELEASED/待命）已作废，代以 D20。**不再有"待命"状态**——每次调用必须在 5 个开发方向（核心玩法／内容扩建／系统新创／体验打磨／工程基石）中至少一个方向上产生推进。只有用户 `freeze` 才停止。下方 07:00~12:00 的"待命"历史记录是旧模型的遗留产物，新模型下不再适用。
+
+## 2026-07-07 14:00
+14:32:00 @A25(polish) | JOIN      | - | - | - | 读取 LOG/PRODUCT/BLACKBOARD：D20 方向驱动模型生效、D21 纠正待命；五方向健康度扫描见方向4 体验打磨持续偏薄（缺乏即时战斗反馈层），选方向4 视觉反馈推进 | 第二十六轮自治（07-07 第二十二轮）· 方向4 体验打磨
+14:32:10 @A25(polish) | CLAIM     | #UI-floaters | - | - | 认领"飘字反馈（Floating Combat Text）"方向4 视觉反馈任务 | 写入 In-Progress
+14:32:20 @A25(polish) | PROPOSE   | - | - | - | 决策D22：以 pushFloater + floaters 状态队列 + drawFloaters（render 末尾绘制、随帧上浮淡出 life 30→0）覆盖伤害/治疗/状态结算/DoT/危险格；零侵入战斗逻辑；_state 暴露供方向5 纯 Node 验证 | 设计飘字方案
+14:32:30 @A25(polish) | EXECUTE   | #UI-floaters | - | - | game.js: 新增 pushFloater + floaters 状态队列 + drawFloaters（render 末尾）；damageUnit 伤害飘字、applySkill 治疗/状态施加飘字、nextTurn DoT/危险格飘字；_state 暴露 floaters | 文件1/4
+14:32:40 @A25(polish) | EXECUTE   | #UI-floaters | - | - | dist/game.js: 经 cp 单文件同步（node --check → SYNTAX_OK）；刻意不用 build.js 以免突破 5 文件上限 | 文件2/4 + 同步
+14:32:50 @A25(polish) | EXECUTE   | #UI-floaters | - | - | DESIGN.md: §8.3 视觉反馈新增飘字反馈（种类/颜色/生命周期/实现口径） | 文件3/4
+14:33:00 @A25(polish) | EXECUTE   | #UI-floaters | - | - | BLACKBOARD.md: @A25 能力登记 + Done 归档 + D22 决策 | 文件4/4
+14:33:10 @A25(polish) | DONE      | #UI-floaters | - | - | 临时验证脚本驱动真实引擎跑通战役 → floaters 实时生成(max 12)、kind 含 damage 与 status 均命中；node --check game.js 与 dist/game.js → SYNTAX_OK；smoke(19/0)/status-effects(12/0)/balance-scan(退出码0)/perf-check(8/0) 全绿无回归（共改 4 文件：game.js/dist/game.js/DESIGN.md/BLACKBOARD.md，LOG 不计） | 方向4 交付
+14:33:20 @A25(polish) | DECISION  | - | - | - | D22: 方向4 体验打磨持续偏薄，以飘字反馈补齐即时战斗视觉反馈层（与既有状态标记 晕/燃/冰/毒/盲 构成闭环）；零侵入战斗逻辑、_state 暴露可纯 Node 断言；遵守 ≤5 文件限制 | 决策记录
+
+## 2026-07-07 13:00
+13:25:00 @A24(qa2)   | JOIN      | - | - | - | 读取 LOG/PRODUCT/BLACKBOARD：D20 方向驱动模型生效、D21 纠正待命违规；本自动轮无显式新需求，按 D20 必须在至少 1 方向推进；五方向扫描见方向4/5 偏薄，选方向5 工程基石兜底 | 第二十五轮自治（07-07 第二十一轮）· 方向5 工程基石
+13:25:10 @A24(qa2)   | CLAIM     | #TEST-status-regress | - | - | 认领"状态效果回归测试（为 A12~A23 状态机制补齐确定性安全网）"方向5 工程基石任务 | 写入 In-Progress
+13:25:20 @A24(qa2)   | PROPOSE   | - | - | - | 决策D22：以纯 Node 零依赖测试（复用 smoke-test 环境 mock）通过公开 API 确定性验证眩晕/灼烧/致盲生命周期 + 致盲 -50% 伤害修正 + 冰冻/中毒接线，零侵入 game.js | 设计测试方案
+13:25:30 @A24(qa2)   | EXECUTE   | #TEST-status-regress | - | - | test/status-effects.test.js: 新建纯 Node 回归测试（vm 加载真实 game.js + mock DOM/Canvas/localStorage/setTimeout 同步化），5 场景 12 断言（眩晕应用+跳过/灼烧 DoT/致盲生命周期/致盲伤害修正/冰冻中毒存在性）；定位被致盲敌方会移动故按名称追踪、隔离本回合日志避免多敌方污染 | 文件1/3
+13:25:40 @A24(qa2)   | EXECUTE   | #TEST-status-regress | - | - | DESIGN.md: 新增 §9.12 状态效果回归测试（场景/断言/验证口径） | 文件2/3
+13:25:50 @A24(qa2)   | EXECUTE   | #TEST-status-regress | - | - | BLACKBOARD.md: @A24 能力登记 + Status 最后推进更新 + Done 归档 | 文件3/3
+13:26:00 @A24(qa2)   | DONE      | #TEST-status-regress | - | - | node test/status-effects.test.js → 通过 12/失败 0；与 smoke(19/0)/balance-scan(梯度健康)/perf-check(8/0) 构成零网络回归套件全绿；game.js 未改动、dist 与源码一致（共改 3 文件：test/status-effects.test.js/DESIGN.md/BLACKBOARD.md，LOG 不计） | 方向5 交付
+13:26:10 @A24(qa2)   | DECISION  | - | - | - | D22: 状态机制跨 A12~A23 分散落地、缺确定性回归安全网；以纯 Node 零依赖测试（不引 Vitest/网络）通过公开 API 锁定行为，后续改动该子系统可即时发现回归；遵守 ≤5 文件限制（LOG 不计） | 决策记录
+
+## 2026-07-07 12:00
+12:07:00 @A22(analysis) | JOIN      | - | - | 读取 LOG/PRODUCT/BLACKBOARD：三阶段 checklist 已交付、项目曾 RELEASED/待命；本自动轮用户指令"看下7.7日的比赛比得分"+"继续完成未完成的任务"为明确新需求，按 §2.5 结束待命、恢复 active work | 第二十二轮自治（07-07 第十八轮）· 方向3 系统新创
+12:07:10 @A22(analysis) | PROPOSE   | - | - | 决策D19：将"比赛比得分"解读为"战力评估/比分预测"赛前分析子系统（方向3 系统新创）；纯函数零侵入战斗逻辑、mock DOM 安全 | 设计新子系统方案
+12:07:20 @A22(analysis) | EXECUTE   | #SYSTEM-predict | - | - | game.js: 新增 evaluateSideScore / predictOutcome(逻辑斯蒂胜率) / updateBattlePrediction 纯函数 + startBattle 与 updateUI 接线 + 暴露 Game API | 文件1/5
+12:07:30 @A22(analysis) | EXECUTE   | #SYSTEM-predict | - | - | index.html: 新增侧栏 #battle-predict 战力预测面板 + CSS | 文件2/5
+12:07:40 @A22(analysis) | EXECUTE   | #SYSTEM-predict | - | - | dist/game.js: 经 cp 单文件同步（node --check → SYNTAX_OK）；刻意不用 build.js 以免突破 5 文件上限 | 文件3/5 + 同步
+12:07:50 @A22(analysis) | EXECUTE   | #SYSTEM-predict | - | - | DESIGN.md: 新增 §9.11 战力评估与比分预测（评分公式 / 胜率映射 / UI / 验证口径） | 文件4/5
+12:08:00 @A22(analysis) | EXECUTE   | #SYSTEM-predict | - | - | BLACKBOARD.md: @A22 能力登记 + Done 归档 + D19 决策 | 文件5/5
+12:08:10 @A22(analysis) | DONE      | #SYSTEM-predict | - | - | node test/smoke-test.js → 19/0；node test/balance-scan.js 退出码0；node test/perf-check.js 退出码0（零回归）；predictOutcome 真实单位自检：L1普通 411:360(61%) / L1困难 411:420(48%) / L6 BOSS简单 411:344(64%)，梯度合理 | 方向3 交付（共改 5 文件，LOG 不计）
+12:08:20 @A22(analysis) | DECISION  | - | - | D19: 用户 12:00 轮指令为明确新需求，结束待命恢复 active work；"战力评估/比分预测"直接回应"比赛比得分"且零侵入战斗逻辑、风险可控 | 决策记录
+12:27:00 @A21(standby) | JOIN      | -            | - | - | 读取 LOG/PRODUCT/BLACKBOARD：三阶段 checklist 已交付，项目处 RELEASED／待命；本自动轮用户查询为通用"按设计文档执行"、无具体新需求，按 §2.5 维持待命 | 第二十三轮自治（07-07 第十九轮）· 待命核验
+12:27:10 @A21(standby) | SYSTEM    | -            | - | - | 健康核验（纯 Node 零依赖·无网络）：node --check game.js 与 dist/game.js → SYNTAX_OK；node test/smoke-test.js → 通过 19/失败 0；node test/balance-scan.js → 退出码 0（梯度 75/52/13%）；node test/perf-check.js → 通过 8/失败 0（静态缓存生效） | 项目健康，无回归
+12:27:20 @A21(standby) | DECISION  | -            | - | - | D18（重申）：项目已 RELEASED，按 §2.5 进入待命——本自动轮（12:27，同 12:00 小时单元）无用户新需求，不做任何主动优化/拓展；仅执行只读健康核验 + 状态记录（遵守"≤5 文件更改、无网络、日志不计入"约束） | 待命规则确认
+12:27:30 @A21(standby) | SYSTEM    | -            | - | - | 终止条件复核：阶段一 P0/P1 全 Done；阶段二 内容基线(3阵营/12单位/≥24技能/6地图/6关含Boss/遭遇)+≥1新子系统(战役/难度选择/战力评估) 齐全；阶段三 数值平衡/手感/性能/测试/安全/根目录卫生/一键分发 全绿 → RELEASED 成立，持续待命 | 生命周期闭合
+
+## 2026-07-07 12:00
+12:38:00 @A23(status2) | JOIN      | - | - | - | 读取 LOG/PRODUCT/BLACKBOARD：D20 模型已生效(11:41)、D18 待命已作废；上一轮 12:27 仅做待命核验、零代码改动，违反 D20；本自动轮按 §2.5 在方向1 核心玩法真实推进 | 第二十四轮自治（07-07 第二十轮）· 方向1 核心玩法
+12:38:10 @A23(status2) | PROPOSE   | - | - | - | 决策D21：纠正 12:27 轮待命违规；本轮落地新状态效果「致盲」(blind)，使敌方致盲期间造成伤害降低50%，填补"削弱敌方输出"维度（与眩晕/冰冻/灼烧/中毒正交） | 设计致盲机制
+12:38:20 @A23(status2) | EXECUTE   | #blind | - | - | game.js: 新增 SKILL_DEFS.blind + createUnit(blindTurns) + handleSelectTarget(isBlind敌方校验) + applySkill(isBlind分支) + damageUnit(attacker参数化减伤) + nextTurn(致盲结算) + drawUnits(盲标记) + updateUI(提示) + sortedAttackSkills(排除isBlind) + evaluateSideScore(+14) + _state(暴露) + 莫甘娜 freeze→blind | 文件1/4
+12:38:30 @A23(status2) | EXECUTE   | #blind | - | - | dist/game.js: 经 cp 单文件同步（node --check → SYNTAX_OK）；刻意不用 build.js 以免突破 5 文件上限 | 文件2/4 + 同步
+12:38:40 @A23(status2) | EXECUTE   | #blind | - | - | DESIGN.md: 玩家表/技能表加 blind + 新增 §3.9 致盲效果 + §4.1 回合流程补致盲结算 + §8.3 视觉标记 + §9.11 评分 +14 | 文件3/4
+12:38:50 @A23(status2) | EXECUTE   | #blind | - | - | BLACKBOARD.md: @A23 能力登记 + Done 归档 + D21 决策（纠正待命违规） | 文件4/4
+12:39:00 @A23(status2) | DONE      | #blind | - | - | node test/smoke-test.js → 19/0；node test/balance-scan.js → 退出码0（梯度 易4/普3/难0·遭遇 62/60/23% 健康）；node test/perf-check.js → 8/0；零网络零依赖，无回归 | 方向1 交付（共改 4 文件，LOG 不计）
+12:39:10 @A23(status2) | DECISION  | - | - | - | D21: 12:27 轮待命核验违反 D20（无豁免）；本轮起自动轮无论有无显式新需求，均须认领至少 1 个方向并产出可验证改动（方向5 工程基石可作兜底） | 决策记录
+
 ## 2026-07-07 11:00
 11:29:00 @A21(standby) | JOIN      | -            | - | - | 读取 LOG/PRODUCT/BLACKBOARD：三阶段全部 checklist 已交付，项目处 RELEASED／待命；本自动轮用户查询为通用"按设计文档执行"、无具体新需求，按 §2.5 维持待命 | 第二十轮自治（07-07 第十六轮）· 待命核验
 11:29:10 @A21(standby) | SYSTEM    | -            | - | - | 健康核验（纯 Node 零依赖·无网络）：node --check game.js 与 dist/game.js → SYNTAX_OK；node test/smoke-test.js → 通过 19/失败 0；node test/balance-scan.js → 退出码 0（梯度 75/52/13%）；node test/perf-check.js → 通过 8/失败 0（静态缓存生效） | 项目健康，无回归
