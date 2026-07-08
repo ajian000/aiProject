@@ -23,6 +23,7 @@ const Game = (() => {
   const HAZARD_DMG = 8;      // 危险格每回合环境伤害
   const COVER_REDUCE = 0.7;  // 掩体减伤系数（承受伤害 ×0.7）
   const VULN_AMP = 0.5;      // 易伤系数：被易伤单位受到的所有伤害提升 50%（集火放大器）
+  const EMPOWER_AMP = 0.5;   // 强化系数：被强化的友方单位造成的所有伤害提升 50%（进攻增益 buff）
 
   // ---- 阵营（驱动敌方 AI 风格差异化） ----
   const FACTIONS = {
@@ -44,6 +45,18 @@ const Game = (() => {
     normal: { key: 'normal', name: '普通', hpMul: 0.80, dmgMul: 1.00 },
     hard:   { key: 'hard',   name: '困难', hpMul: 1.25, dmgMul: 1.10 },
   };
+
+  // ---- 成就（方向3 系统新创：成就系统 · 独立于战斗结算的新维度） ----
+  // 仅在关键里程碑（战斗胜利 / 特定条件）由 checkGameEnd 解锁，写入 saveData.achievements 持久化。
+  // 不侵入任何伤害 / 状态 / 胜负结算路径，纯为玩家长期目标与正反馈。
+  const ACHIEVEMENTS = [
+    { id: 'first_win',     name: '初战告捷', desc: '取得你的第一场战斗胜利' },
+    { id: 'flawless',      name: '全身而退', desc: '一场战斗结束时我方 3 名单位全部存活' },
+    { id: 'taunter',       name: '坚壁清野', desc: '使用嘲讽术（坦克引流）取得一场胜利' },
+    { id: 'boss_slayer',   name: '弑王',     desc: '在战役中击败 Boss（大魔导师·马尔佐斯）' },
+    { id: 'campaign_clear', name: '征服者', desc: '通关全部 6 关战役' },
+    { id: 'streak3',       name: '三连胜',   desc: '连续取得 3 场胜利' },
+  ];
 
   // ---- 技能定义 ----
   const SKILL_DEFS = {
@@ -71,14 +84,39 @@ const Game = (() => {
     // 与致盲(敌方输出-50%) / 沉默(禁施法) / 嘲讽(强制吸引) 正交——易伤是「放大我方对该目标的伤害」，
     // 给玩家带来全新的「标记→集火」战术选择（区别于单纯压低敌方能力）。
     vuln: { name: '易伤术', dmg: 0, range: 3, cooldown: 3, desc: '范围3格，使敌方目标易伤2回合，期间其受到的所有伤害提升50%（集火放大器）', aoeRadius: 0, isVuln: true, vulnTurns: 2 },
+    // 恐惧（强制位移 / 恐慌撤退）：使敌方目标恐惧，期间其被迫远离施法者移动（与冰冻"禁移"、嘲讽"强制靠近"正交的"移动控制"维度）
+    fear: { name: '恐惧术', dmg: 0, range: 3, cooldown: 2, desc: '范围3格，使敌方目标恐惧2回合，期间其被迫远离你移动（恐慌撤退），无法主动接近', aoeRadius: 0, isFear: true, fearTurns: 2 },
+    // 拉拽（强制位移 / 拉近）：将敌方目标向施法者拉近最多 pullRange 格——与恐惧"推远"、嘲讽"靠近(攻击吸引)"、冰冻"禁移"正交的
+    // 第四种位置控制维度：不是状态(debuff)、不是仇恨重定向，而是「即时物理位移」，可把敌人拉入我方集火射程或危险格。
+    pull: { name: '拉拽术', dmg: 0, range: 3, cooldown: 2, desc: '范围3格，将敌方目标向你拉近最多2格（强制位移·可拉入射程或危险格），CD2回合', aoeRadius: 0, isPull: true, pullRange: 2 },
+    // 强化（进攻向增益 buff / 友方强化）：为友方单位附加"强化"状态，期间其造成的所有伤害提升 50%；
+    // 与治愈术(即时回血)/护盾(受伤前吸收)正交——强化是"enhance outgoing damage"（提升友方战斗力），
+    // 填补既有 11 种机制中唯一缺失的维度：对友方单位的"进攻性增益"（此前只有 heal/shield 这类防御/续航向友方增益）。
+    empower: { name: '强化术', dmg: 0, range: 2, cooldown: 2, desc: '范围2格，为友方单位附加强化，使其造成的所有伤害提升50%（持续2回合·进攻增益），CD2回合', aoeRadius: 0, isEmpower: true, empowerTurns: 2 },
   };
 
   // ---- 玩家单位（固定 3 人小队，含阵营） ----
   const PLAYER_UNITS = [
     { name: '炎法师·艾拉', maxHp: 80, moveRange: 2, faction: 'pyro', skills: ['fireball', 'burn', 'heal'], color: '#66bb6a' },
-    { name: '雷法师·特斯拉', maxHp: 70, moveRange: 3, faction: 'cryo', skills: ['lightning', 'silence', 'shield'], color: '#43a047' },
+    { name: '雷法师·特斯拉', maxHp: 70, moveRange: 3, faction: 'cryo', skills: ['lightning', 'silence', 'taunt'], color: '#43a047' },
     { name: '暗法师·莫甘娜', maxHp: 65, moveRange: 2, faction: 'nature', skills: ['meteor', 'vuln', 'blind'], color: '#81c784' },
   ];
+
+  // ---- 圣光阵营玩家小队（方向2 内容扩建：第 4 阵营「圣光」作为可选出场阵营） ----
+  // 与 PLAYER_UNITS（经典三阵营混编小队）并列；玩家在主菜单选择出场阵营，带来全新技能体验。
+  // 圣光队以「守护/治疗 + 圣光打击 smite」为核心，作战风格与经典小队明显不同（偏续航/守护向）。
+  // 圣光单位此前仅以敌方身份出现于 ENEMY_UNITS；本次新增为玩家可操控单位，属内容扩建而非 clone+rename。
+  const LIGHT_SQUAD = [
+    { name: '圣光祭司·塞拉', maxHp: 72, moveRange: 2, faction: 'light', skills: ['heal', 'smite', 'empower'], color: '#ffd54f' },
+    { name: '圣堂守卫·加百列', maxHp: 88, moveRange: 2, faction: 'light', skills: ['fireball', 'heal', 'pull'], color: '#ffca28' },
+    { name: '曙光射手·奥菲', maxHp: 64, moveRange: 3, faction: 'light', skills: ['lightning', 'smite', 'meteor'], color: '#ffe082' },
+  ];
+  const PLAYER_SQUADS = {
+    classic: PLAYER_UNITS,
+    light: LIGHT_SQUAD,
+  };
+  // 玩家当前所选出场阵营（默认 classic，保持与历史版本一致；测试与既有对局零影响）
+  let selectedPlayerFaction = 'classic';
 
   // ---- 敌方单位池（可部署，含阵营；单位类型池 ≥12 的基础） ----
   const ENEMY_UNITS = [
@@ -101,6 +139,25 @@ const Game = (() => {
   const BOSS_UNITS = [
     { name: '大魔导师·马尔佐斯', maxHp: 150, moveRange: 3, faction: 'pyro', isBoss: true, skills: ['meteor', 'fireball', 'poison'], color: '#ff5252' },
   ];
+
+  // ---- 单位图鉴数据（方向3 系统新创 · 单位图鉴 Codex） ----
+  // 数据驱动合并既有单位数组（玩家经典 / 玩家圣光 / 敌方 / BOSS），按名称去重后形成全单位档案。
+  // 纯展示、零战斗影响：不参与任何伤害 / 状态 / 胜负结算，不读取 / 修改 saveData，不依赖战斗运行时状态。
+  // 仅用于主菜单「单位图鉴」面板，让玩家在开打前查看全部可用单位的属性与技能。
+  const CODEX_ROSTER = (() => {
+    const seen = new Set();
+    const list = [];
+    const add = (u, category) => {
+      if (!u || seen.has(u.name)) return; // 同名单位只收录一次（圣光单位在玩家/敌方两侧出现时仅展示一次）
+      seen.add(u.name);
+      list.push({ name: u.name, maxHp: u.maxHp, moveRange: u.moveRange, faction: u.faction, color: u.color, isBoss: !!u.isBoss, category, skills: u.skills });
+    };
+    PLAYER_UNITS.forEach(u => add(u, '玩家 · 经典'));
+    LIGHT_SQUAD.forEach(u => add(u, '玩家 · 圣光'));
+    ENEMY_UNITS.forEach(u => add(u, u.faction === 'light' ? '敌方 · 圣光' : '敌方'));
+    BOSS_UNITS.forEach(u => add(u, 'BOSS'));
+    return list;
+  })();
 
   // ---- 地图（≥6 张战役地图，含地形：掩体 cover / 危险格 hazard） ----
   const MAPS = [
@@ -142,11 +199,16 @@ const Game = (() => {
   let attackHighlightCells = [];
   let logs = [];
   let activeSkill = null;
-  let saveData = { wins: 0, losses: 0, unlockedLevel: 1 };
+  let saveData = { wins: 0, losses: 0, unlockedLevel: 1, achievements: [], winStreak: 0 };
   let currentMap = null;
   let gameMode = null;        // 'campaign' | 'skirmish'
   let currentCampaignLevel = 0;
   let difficulty = 'normal'; // Stage 3 · 难度选择（默认普通）
+
+  // 成就 / 战绩追踪的每场战斗运行时标记（startBattle 重置）
+  let battleScored = false;   // 防止 checkGameEnd 重复计分（胜/负面各一次）
+  let battleTauntUsed = false; // 本场战斗玩家是否施放过嘲讽术
+  let battleHadBoss = false;   // 本场战斗是否含 Boss 单位
 
   // ---- 初始化 ----
   function init() {
@@ -171,10 +233,14 @@ const Game = (() => {
     attackHighlightCells = [];
     activeSkill = null;
     logs = [];
+    battleScored = false;
+    battleTauntUsed = false;
+    battleHadBoss = setup.enemies.some(r => r.src === 'boss'); // 第 6 关含 Boss
     const logEl = document.getElementById('log-content');
     if (logEl) logEl.innerHTML = '';
-    // 放置玩家单位（左侧 gx=1，行 1/3/5）
-    PLAYER_UNITS.forEach((def, i) => units.push(createUnit(def, 'player', 1, [1, 3, 5][i])));
+    // 放置玩家单位（左侧 gx=1，行 1/3/5）——使用当前所选出场阵营小队
+    const squad = PLAYER_SQUADS[selectedPlayerFaction] || PLAYER_UNITS;
+    squad.forEach((def, i) => units.push(createUnit(def, 'player', 1, [1, 3, 5][i])));
     // 放置敌方单位（右侧 gx=6，行 1/3/5）
     setup.enemies.forEach((ref, i) => {
       const def = ref.src === 'boss' ? BOSS_UNITS[ref.i] : ENEMY_UNITS[ref.i];
@@ -223,9 +289,11 @@ const Game = (() => {
       silenceTurns: 0,
       vulnTurns: 0,       // 易伤剩余回合（被易伤期间受到的所有伤害 +50%，集火放大器）
       tauntTurns: 0,
+      fearTurns: 0,      // 恐惧剩余回合（被恐惧期间被迫远离施法者移动·恐慌撤退）
       taunterId: null,
       shield: 0,        // 当前护盾吸收点数（受伤害时优先扣除，归零后再扣 HP）
       shieldTurns: 0,   // 护盾剩余持续回合（回合边界递减，归零则护盾消散）
+      empowerTurns: 0,  // 强化剩余回合（被强化的友方期间造成的所有伤害 +50%，进攻增益）
     };
   }
 
@@ -242,7 +310,11 @@ const Game = (() => {
       }).join('');
     }
     const menu = document.getElementById('menu');
-    if (menu) menu.style.display = 'flex';
+    if (menu) {
+      renderAchievements(); // 刷新主菜单成就面板（解锁进度）
+      renderCodex();        // 刷新主菜单单位图鉴（全单位档案）
+      menu.style.display = 'flex';
+    }
   }
 
   function startCampaign(level) {
@@ -288,6 +360,22 @@ const Game = (() => {
     addLog(`难度已设为「${DIFFICULTY[d].name}」，将影响后续战斗的敌方强度`, 'info');
   }
 
+  // ---- 玩家出场阵营选择（方向2 内容扩建：第 4 阵营「圣光」作为可选出场阵营） ----
+  // 与「经典」（三阵营混编）小队并列；玩家在主菜单选择出场阵营，带来全新技能体验。
+  // 圣光队以「守护/治疗 + 圣光打击 smite」为核心，作战风格与经典小队明显不同，
+  // 属内容扩建（圣光单位此前仅以敌方身份出现，本次新增为玩家可操控单位），非 clone+rename。
+  function setPlayerFaction(f) {
+    if (!PLAYER_SQUADS[f]) return;
+    selectedPlayerFaction = f;
+    ['classic', 'light'].forEach(n => {
+      const btn = document.getElementById('faction-' + n);
+      if (btn) btn.className = 'faction-btn' + (n === f ? ' active' : '');
+    });
+    const el = document.getElementById('menu-faction');
+    if (el) el.textContent = `当前出场阵营: ${f === 'light' ? '圣光（守护/治疗向）' : '经典（三阵营混编）'}`;
+    addLog(`出场阵营已设为「${f === 'light' ? '圣光' : '经典'}」`, 'info');
+  }
+
   // ---- 坐标工具 ----
   function cellToPixel(gx, gy) { return { x: gx * CELL, y: gy * CELL }; }
   function pixelToCell(px, py) { return { gx: Math.floor(px / CELL), gy: Math.floor(py / CELL) }; }
@@ -314,6 +402,7 @@ const Game = (() => {
   function damageUnit(target, dmg, attacker) {
     let actual = dmg;
     if (attacker && attacker.blindTurns > 0) actual = Math.floor(actual * 0.5); // 致盲：输出伤害降低50%
+    if (attacker && attacker.empowerTurns > 0) actual = Math.floor(actual * (1 + EMPOWER_AMP)); // 强化：友方输出伤害提升50%（进攻增益）
     if (coverAt(target.gx, target.gy)) actual = Math.floor(actual * COVER_REDUCE);
     if (target.vulnTurns > 0) actual = Math.floor(actual * (1 + VULN_AMP)); // 易伤：受到伤害提升 50%（集火放大器）
     // 护盾吸收：优先扣除护盾点数，溢出部分才进入 HP（覆盖 普攻/DOT/危险格 等所有伤害来源）
@@ -384,16 +473,48 @@ const Game = (() => {
     drawFloaters();
   }
 
+  // ---- 施法目标预览（方向4 体验打磨）：高亮当前技能的合法落点 ----
+  // 在 selectTarget 阶段，根据 activeSkill 的类型标出可点击的有效目标格：
+  //   · 敌方单位（进攻/控制类技能）→ 红色描边
+  //   · 友方单位（治愈/护盾/强化类 buff）→ 绿色描边
+  //   · 空地（仅范围伤害 AoE 技能的合法落点）→ 橙色描边
+  // 纯渲染层、零战斗逻辑改动；computeValidTargets 同时被 _state() 暴露供方向5 纯 Node 断言。
+  function computeValidTargets() {
+    if (phase !== 'selectTarget' || !selectedUnit || !activeSkill) return [];
+    const buff = activeSkill.isHeal || activeSkill.isShield || activeSkill.isEmpower;
+    const cells = [];
+    for (let x = 0; x < GRID; x++) {
+      for (let y = 0; y < GRID; y++) {
+        if (cellDistPt(selectedUnit.gx, selectedUnit.gy, x, y) > activeSkill.range) continue;
+        const t = getUnitAt(x, y);
+        if (t) {
+          if (buff) { if (t.team === selectedUnit.team) cells.push({ gx: x, gy: y, kind: 'friendly' }); }
+          else if (t.team !== selectedUnit.team) cells.push({ gx: x, gy: y, kind: 'enemy' });
+        } else if (activeSkill.aoeRadius > 0) {
+          cells.push({ gx: x, gy: y, kind: 'aoe' }); // AoE：空地也是合法落点
+        }
+      }
+    }
+    return cells;
+  }
+
   function drawHighlights() {
     // 移动高亮
     moveHighlightCells.forEach(({ gx, gy }) => {
       ctx.fillStyle = COLORS.moveHighlight;
       ctx.fillRect(gx * CELL + 2, gy * CELL + 2, CELL - 4, CELL - 4);
     });
-    // 攻击高亮
+    // 攻击高亮（射程填充）
     attackHighlightCells.forEach(({ gx, gy }) => {
       ctx.fillStyle = COLORS.attackHighlight;
       ctx.fillRect(gx * CELL + 2, gy * CELL + 2, CELL - 4, CELL - 4);
+    });
+    // 施法目标预览：标出可点击的有效目标格（方向4 体验打磨 · 减少误点与反应时间）
+    computeValidTargets().forEach(c => {
+      const color = c.kind === 'friendly' ? '#69f0ae' : (c.kind === 'enemy' ? '#ff5252' : '#ffb300');
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 3;
+      ctx.strokeRect(c.gx * CELL + 5, c.gy * CELL + 5, CELL - 10, CELL - 10);
     });
   }
 
@@ -516,6 +637,25 @@ const Game = (() => {
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         ctx.fillText('易', px, py - 44);
+      }
+      // 强化标记（进攻增益）：金色"强"字显示在单位右上角（与易伤"易"错位）；被强化友方输出伤害提升 50%
+      if (u.empowerTurns > 0) {
+        ctx.fillStyle = '#ffc107';
+        ctx.font = 'bold 14px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('强', px + 30, py - 44);
+      }
+      // 恐惧标记（恐慌撤退）：以虚线环表示，避免与其他状态文字标记位置冲突
+      if (u.fearTurns > 0) {
+        ctx.save();
+        ctx.strokeStyle = '#ba68c8';
+        ctx.lineWidth = 2;
+        ctx.setLineDash([4, 3]);
+        ctx.beginPath();
+        ctx.arc(px, py, 34, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.restore();
       }
     });
   }
@@ -693,6 +833,27 @@ const Game = (() => {
         addLog(`${selectedUnit.name} 取消施放 ${activeSkill.name}（无效目标：需选友方）`, 'info');
         attackHighlightCells = []; activeSkill = null; phase = 'selectUnit'; updateUI(); render(); return;
       }
+    } else if (activeSkill.isFear) {
+      if (target && target.team !== selectedUnit.team) {
+        applySkill(selectedUnit, gx, gy, activeSkill);
+      } else {
+        addLog(`${selectedUnit.name} 取消施放 ${activeSkill.name}（无效目标：需选敌方）`, 'info');
+        attackHighlightCells = []; activeSkill = null; phase = 'selectUnit'; updateUI(); render(); return;
+      }
+    } else if (activeSkill.isPull) {
+      if (target && target.team !== selectedUnit.team) {
+        applySkill(selectedUnit, gx, gy, activeSkill);
+      } else {
+        addLog(`${selectedUnit.name} 取消施放 ${activeSkill.name}（无效目标：需选敌方）`, 'info');
+        attackHighlightCells = []; activeSkill = null; phase = 'selectUnit'; updateUI(); render(); return;
+      }
+    } else if (activeSkill.isEmpower) {
+      if (target && target.team === selectedUnit.team) {
+        applySkill(selectedUnit, gx, gy, activeSkill);
+      } else {
+        addLog(`${selectedUnit.name} 取消施放 ${activeSkill.name}（无效目标：需选友方）`, 'info');
+        attackHighlightCells = []; activeSkill = null; phase = 'selectUnit'; updateUI(); render(); return;
+      }
     } else {
       // 单体或范围伤害：以点击格为中心；范围技能会波及周围敌方（含空地中心）
       applySkill(selectedUnit, gx, gy, activeSkill);
@@ -795,6 +956,7 @@ const Game = (() => {
     if (skill.isTaunt) {
       const t = getUnitAt(gx, gy);
       if (!t || t.team === attacker.team) { skill.cd = 0; return; }
+      if (attacker.team === 'player') battleTauntUsed = true; // 成就追踪：玩家施放过嘲讽
       t.tauntTurns = Math.max(t.tauntTurns, skill.tauntTurns);
       t.taunterId = attacker.id; // 记录嘲讽来源，敌方 AI 据此锁定攻击目标
       pushFloater(t.gx, t.gy, '嘲讽', 'status');
@@ -812,6 +974,16 @@ const Game = (() => {
       skill.cd = skill.cooldown;
       return;
     }
+    // 恐惧（强制位移 / 恐慌撤退）：使敌方目标恐惧，期间其被迫远离施法者移动（与冰冻"禁移"/嘲讽"靠近"正交的移动控制）
+    if (skill.isFear) {
+      const t = getUnitAt(gx, gy);
+      if (!t || t.team === attacker.team) { skill.cd = 0; return; }
+      t.fearTurns = Math.max(t.fearTurns, skill.fearTurns);
+      pushFloater(t.gx, t.gy, '恐惧', 'status');
+      addLog(`${attacker.name} 对 ${t.name} 施放 ${skill.name}，目标陷入恐惧（剩余 ${t.fearTurns} 回合·被迫远离你移动）`, 'damage');
+      skill.cd = skill.cooldown;
+      return;
+    }
     // 护盾（防御向减伤 buff）：为友方附加可吸收伤害的护盾（preemptive mitigation）
     if (skill.isShield) {
       const t = getUnitAt(gx, gy);
@@ -820,6 +992,46 @@ const Game = (() => {
       t.shieldTurns = Math.max(t.shieldTurns, skill.shieldTurns);
       pushFloater(t.gx, t.gy, '护盾', 'status');
       addLog(`${attacker.name} 对 ${t.name} 施放 ${skill.name}，附加 ${skill.shieldAmount} 点护盾（持续 ${t.shieldTurns} 回合）`, 'heal');
+      skill.cd = skill.cooldown;
+      return;
+    }
+    // 拉拽（强制位移 / 拉近）：将敌方目标向施法者拉近最多 pullRange 格
+    // 与恐惧"推远"、嘲讽"靠近(攻击吸引)"、冰冻"禁移"正交的第四种位置控制维度（即时物理位移，非状态 debuff）
+    if (skill.isPull) {
+      const t = getUnitAt(gx, gy);
+      if (!t || t.team === attacker.team) { skill.cd = 0; return; } // 安全兜底：仅对敌方生效
+      const range = skill.pullRange || 2;
+      let cx = t.gx, cy = t.gy;
+      for (let step = 0; step < range; step++) {
+        const adx = Math.abs(attacker.gx - cx), ady = Math.abs(attacker.gy - cy);
+        if (adx === 0 && ady === 0) break; // 已贴近施法者
+        let nx = cx, ny = cy;
+        if (adx >= ady && attacker.gx !== cx) nx = cx + Math.sign(attacker.gx - cx);
+        else if (attacker.gy !== cy) ny = cy + Math.sign(attacker.gy - cy);
+        else if (attacker.gx !== cx) nx = cx + Math.sign(attacker.gx - cx);
+        // 不能移动到施法者所在格 / 越界 / 被其他单位占据（其余单位仍按旧位置判断，目标尚未真正移动）
+        if (nx === attacker.gx && ny === attacker.gy) break;
+        if (nx < 0 || nx >= GRID || ny < 0 || ny >= GRID) break;
+        if (getUnitAt(nx, ny)) break;
+        cx = nx; cy = ny;
+      }
+      const moved = (cx !== t.gx || cy !== t.gy);
+      const dist = Math.abs(t.gx - cx) + Math.abs(t.gy - cy);
+      t.gx = cx; t.gy = cy; // 即时位移（可被拉入射程或危险格，开放战术使用）
+      pushFloater(t.gx, t.gy, '拉拽', 'status');
+      addLog(`${attacker.name} 对 ${t.name} 施放 ${skill.name}，将其拉近 ${moved ? dist + ' 格' : '（已在身边）'}`, 'damage');
+      skill.cd = skill.cooldown;
+      return;
+    }
+    // 强化（进攻向增益 buff）：为友方单位附加强化状态，期间其造成的所有伤害提升 50%（enhance outgoing damage）
+    // 与治愈术(即时回血)/护盾(受伤前吸收)正交——强化是唯一的"友方进攻增益"维度（此前只有防御/续航向友方增益）。
+    // 与易伤(放大我方对敌伤害)也正交：易伤是 debuff（作用于敌方）、强化是 buff（作用于友方）。
+    if (skill.isEmpower) {
+      const t = getUnitAt(gx, gy);
+      if (!t || t.team !== attacker.team) { skill.cd = 0; return; } // 安全：仅强化友方
+      t.empowerTurns = Math.max(t.empowerTurns, skill.empowerTurns);
+      pushFloater(t.gx, t.gy, '强化', 'status');
+      addLog(`${attacker.name} 对 ${t.name} 施放 ${skill.name}，目标被强化（剩余 ${t.empowerTurns} 回合·造成伤害提升50%）`, 'heal');
       skill.cd = skill.cooldown;
       return;
     }
@@ -974,7 +1186,7 @@ const Game = (() => {
 
   // 按阵营风格排序攻击技能：skirmish 优先控制技，其余按伤害降序
   function sortedAttackSkills(unit, style) {
-    const list = unit.skills.filter(s => s.cd <= 0 && !s.isHeal && !s.isBlind && !s.isShield && !s.isSilence && !s.isVuln);
+    const list = unit.skills.filter(s => s.cd <= 0 && !s.isHeal && !s.isBlind && !s.isShield && !s.isSilence && !s.isVuln && !s.isTaunt && !s.isFear && !s.isPull && !s.isEmpower);
     if (style === 'skirmish') {
       const ctrl = s => (s.isStun ? 1 : 0) + (s.isFreeze ? 1 : 0) + (s.isPoison ? 1 : 0);
       return list.sort((a, b) => ctrl(b) - ctrl(a) || b.dmg - a.dmg);
@@ -1031,21 +1243,31 @@ const Game = (() => {
 
     // 3. 移动靠近最近目标（被冰冻时无法移动，跳过本步但仍可原地攻击/治疗）
     //    嘲讽期间：优先贴近嘲讽来源（强制吸引仇恨），否则贴近最近敌人
+    //    恐惧期间：被迫远离最近玩家（恐慌撤退），与冰冻"禁移"/嘲讽"靠近"正交
     let moveCells = [];
     if (unit.frozenTurns <= 0) {
       const closest = tauntTarget || targets.sort((a, b) => cellDist(unit, a) - cellDist(unit, b))[0];
+      const feared = unit.fearTurns > 0 && !tauntTarget; // 恐惧：强制远离最近玩家（恐慌撤退）
       moveCells = getMoveCells(unit);
       if (moveCells.length > 0) {
-        let bestCell = moveCells.sort((a, b) =>
-          cellDistPt(a.gx, a.gy, closest.gx, closest.gy) - cellDistPt(b.gx, b.gy, closest.gx, closest.gy)
-        )[0];
-        // 寒冰(防守)/自然(游击) 优先占据掩体格
-        if (style === 'defensive' || style === 'skirmish') {
-          const coverCells = moveCells.filter(c => coverAt(c.gx, c.gy));
-          if (coverCells.length > 0) {
-            bestCell = coverCells.sort((a, b) =>
-              cellDistPt(a.gx, a.gy, closest.gx, closest.gy) - cellDistPt(b.gx, b.gy, closest.gx, closest.gy)
-            )[0];
+        let bestCell;
+        if (feared) {
+          bestCell = moveCells.sort((a, b) =>
+            cellDistPt(b.gx, b.gy, closest.gx, closest.gy) - cellDistPt(a.gx, a.gy, closest.gx, closest.gy)
+          )[0];
+          addLog(`${unit.name} 陷入恐惧，恐慌撤退`, 'info');
+        } else {
+          bestCell = moveCells.sort((a, b) =>
+            cellDistPt(a.gx, a.gy, closest.gx, closest.gy) - cellDistPt(b.gx, b.gy, closest.gx, closest.gy)
+          )[0];
+          // 寒冰(防守)/自然(游击) 优先占据掩体格
+          if (style === 'defensive' || style === 'skirmish') {
+            const coverCells = moveCells.filter(c => coverAt(c.gx, c.gy));
+            if (coverCells.length > 0) {
+              bestCell = coverCells.sort((a, b) =>
+                cellDistPt(a.gx, a.gy, closest.gx, closest.gy) - cellDistPt(b.gx, b.gy, closest.gx, closest.gy)
+              )[0];
+            }
           }
         }
         addLog(`${unit.name} 移动到 (${bestCell.gx},${bestCell.gy})`, 'move');
@@ -1141,10 +1363,20 @@ const Game = (() => {
         u.vulnTurns--;
         if (u.vulnTurns === 0) addLog(`${u.name} 易伤解除，受到伤害恢复正常`, 'info');
       }
+      // 恐惧结算：回合边界递减；归零解除强制位移（恢复自由移动）
+      if (u.fearTurns > 0) {
+        u.fearTurns--;
+        if (u.fearTurns === 0) addLog(`${u.name} 恐惧解除，恢复行动`, 'info');
+      }
       // 护盾结算：回合边界递减；归零则护盾消散（已吸收的残留点数一并清空）
       if (u.shieldTurns > 0) {
         u.shieldTurns--;
         if (u.shieldTurns === 0) { u.shield = 0; addLog(`${u.name} 护盾消散`, 'info'); }
+      }
+      // 强化结算：回合边界递减；归零解除进攻增益（被强化友方恢复基准输出）
+      if (u.empowerTurns > 0) {
+        u.empowerTurns--;
+        if (u.empowerTurns === 0) addLog(`${u.name} 强化解除，伤害恢复基准`, 'info');
       }
       // 危险格环境伤害（不区分阵营）
       if (u.hp > 0 && hazardAt(u.gx, u.gy)) {
@@ -1171,6 +1403,7 @@ const Game = (() => {
     if (playerAlive === 0) {
       phase = 'gameOver';
       saveData.losses++;
+      saveData.winStreak = 0; // 连胜中断
       saveSave();
       addLog('【战斗结束】玩家失败', 'damage');
       if (gameMode === 'campaign') setOverlayAction('重试本关', `Game.startCampaign(${currentCampaignLevel})`);
@@ -1179,6 +1412,19 @@ const Game = (() => {
     } else if (enemyAlive === 0) {
       phase = 'gameOver';
       saveData.wins++;
+      // 成就解锁（每场战斗仅计分一次，避免 checkGameEnd 重复触发）
+      if (!battleScored) {
+        battleScored = true;
+        unlockAchievement('first_win');
+        const pAlive = units.filter(u => u.team === 'player' && u.hp > 0);
+        if (pAlive.length === 3) unlockAchievement('flawless');     // 全员存活
+        if (battleHadBoss) unlockAchievement('boss_slayer');        // 击败 Boss
+        if (battleTauntUsed) unlockAchievement('taunter');          // 嘲讽引流取胜
+        if (gameMode === 'campaign' && currentCampaignLevel === CAMPAIGN.length) unlockAchievement('campaign_clear'); // 通关
+        saveData.winStreak = (saveData.winStreak || 0) + 1;
+        if (saveData.winStreak >= 3) unlockAchievement('streak3');  // 三连胜
+        saveSave();
+      }
       let msg = '敌方已被全部消灭！';
       if (gameMode === 'campaign') {
         if (currentCampaignLevel < CAMPAIGN.length) {
@@ -1208,6 +1454,11 @@ const Game = (() => {
     const base = { wins: toCount(obj && obj.wins), losses: toCount(obj && obj.losses) };
     const ul = Math.floor(Number(obj && obj.unlockedLevel));
     base.unlockedLevel = (Number.isFinite(ul) && ul >= 1 && ul <= CAMPAIGN.length) ? ul : 1;
+    // 成就系统：仅保留合法成就 id，避免损坏/篡改存档注入无效条目
+    if (obj && Array.isArray(obj.achievements)) {
+      base.achievements = obj.achievements.filter(a => ACHIEVEMENTS.some(def => def.id === a));
+    } else { base.achievements = []; }
+    base.winStreak = toCount(obj && obj.winStreak);
     return base;
   }
 
@@ -1252,7 +1503,7 @@ const Game = (() => {
     const hpText = document.getElementById('hp-text');
     if (selectedUnit) {
       const factionName = (selectedUnit.faction && FACTIONS[selectedUnit.faction]) ? FACTIONS[selectedUnit.faction].name : '—';
-      detailEl.innerHTML = `<strong>${selectedUnit.name}</strong>${selectedUnit.isBoss ? ' <span style="color:#ffd54f">★BOSS</span>' : ''}<br>阵营: ${factionName}<br>团队: ${selectedUnit.team === 'player' ? '玩家' : '敌方'}<br>位置: (${selectedUnit.gx},${selectedUnit.gy})${selectedUnit.stunned ? '<br><span style="color:#e0a0ff">⚡ 眩晕中</span>' : ''}${selectedUnit.burnTurns > 0 ? '<br><span style="color:#ff7043">🔥 灼烧中(' + selectedUnit.burnTurns + '回合)</span>' : ''}${selectedUnit.frozenTurns > 0 ? '<br><span style="color:#4fc3f7">❄ 冰冻中(' + selectedUnit.frozenTurns + '回合·无法移动)</span>' : ''}${selectedUnit.poisonTurns > 0 ? '<br><span style="color:#9e9d24">☠ 中毒中(' + selectedUnit.poisonTurns + '回合·治疗减半)</span>' : ''}${selectedUnit.blindTurns > 0 ? '<br><span style="color:#b39ddb">👁 致盲中(' + selectedUnit.blindTurns + '回合·伤害降低50%)</span>' : ''}${selectedUnit.tauntTurns > 0 ? '<br><span style="color:#ffb300">🛡 嘲讽中(' + selectedUnit.tauntTurns + '回合·攻击被吸引向你)</span>' : ''}${selectedUnit.shield > 0 ? '<br><span style="color:#40c4ff">🔰 护盾(' + selectedUnit.shield + '点·持续' + selectedUnit.shieldTurns + '回合)</span>' : ''}${selectedUnit.silenceTurns > 0 ? '<br><span style="color:#9575cd">🔇 沉默中(' + selectedUnit.silenceTurns + '回合·无法施法)</span>' : ''}${selectedUnit.vulnTurns > 0 ? '<br><span style="color:#ff5252">💥 易伤中(' + selectedUnit.vulnTurns + '回合·受到伤害+50%)</span>' : ''}`;
+      detailEl.innerHTML = `<strong>${selectedUnit.name}</strong>${selectedUnit.isBoss ? ' <span style="color:#ffd54f">★BOSS</span>' : ''}<br>阵营: ${factionName}<br>团队: ${selectedUnit.team === 'player' ? '玩家' : '敌方'}<br>位置: (${selectedUnit.gx},${selectedUnit.gy})${selectedUnit.stunned ? '<br><span style="color:#e0a0ff">⚡ 眩晕中</span>' : ''}${selectedUnit.burnTurns > 0 ? '<br><span style="color:#ff7043">🔥 灼烧中(' + selectedUnit.burnTurns + '回合)</span>' : ''}${selectedUnit.frozenTurns > 0 ? '<br><span style="color:#4fc3f7">❄ 冰冻中(' + selectedUnit.frozenTurns + '回合·无法移动)</span>' : ''}${selectedUnit.poisonTurns > 0 ? '<br><span style="color:#9e9d24">☠ 中毒中(' + selectedUnit.poisonTurns + '回合·治疗减半)</span>' : ''}${selectedUnit.blindTurns > 0 ? '<br><span style="color:#b39ddb">👁 致盲中(' + selectedUnit.blindTurns + '回合·伤害降低50%)</span>' : ''}${selectedUnit.tauntTurns > 0 ? '<br><span style="color:#ffb300">🛡 嘲讽中(' + selectedUnit.tauntTurns + '回合·攻击被吸引向你)</span>' : ''}${selectedUnit.shield > 0 ? '<br><span style="color:#40c4ff">🔰 护盾(' + selectedUnit.shield + '点·持续' + selectedUnit.shieldTurns + '回合)</span>' : ''}${selectedUnit.silenceTurns > 0 ? '<br><span style="color:#9575cd">🔇 沉默中(' + selectedUnit.silenceTurns + '回合·无法施法)</span>' : ''}${selectedUnit.vulnTurns > 0 ? '<br><span style="color:#ff5252">💥 易伤中(' + selectedUnit.vulnTurns + '回合·受到伤害+50%)</span>' : ''}${selectedUnit.fearTurns > 0 ? '<br><span style="color:#ba68c8">😱 恐惧中(' + selectedUnit.fearTurns + '回合·被迫远离你移动)</span>' : ''}${selectedUnit.empowerTurns > 0 ? '<br><span style="color:#ffc107">⚔ 强化中(' + selectedUnit.empowerTurns + '回合·造成伤害+50%)</span>' : ''}`;
       const ratio = Math.max(0, selectedUnit.hp / selectedUnit.maxHp) * 100;
       hpFill.style.width = ratio + '%';
       hpFill.className = 'hp-fill ' + (selectedUnit.team === 'player' ? 'player' : 'enemy');
@@ -1291,15 +1542,65 @@ const Game = (() => {
     updateBattlePrediction();
   }
 
-  // ---- 日志 ----
+  // ---- 日志（方向4 体验打磨 · 战斗信息日志 Battle Journal） ----
+  // 自 04:00 轮落地：记录战斗全程关键事件（移动/技能/伤害/治疗/状态结算/胜负），
+  // 与飘字反馈（瞬时）互补，提供可回看的持久战斗叙事；按 type 着色（index.html CSS）。
   function addLog(text, type = 'info') {
     logs.push({ text, type });
     const el = document.getElementById('log-content');
+    if (!el) return; // 健壮性：构建版若缺 #log-content 面板（如未同步的 dist）也不崩溃
     const entry = document.createElement('div');
     entry.className = 'log-entry ' + type;
     entry.textContent = text;
     el.appendChild(entry);
     el.scrollTop = el.scrollHeight;
+  }
+
+  // ---- 成就解锁 + 主菜单成就面板渲染（方向3 系统新创 · 成就系统） ----
+  // 仅在 checkGameEnd 关键里程碑调用；不侵入战斗逻辑；纯为玩家长期目标与正反馈。
+  function unlockAchievement(id) {
+    if (!saveData.achievements) saveData.achievements = [];
+    if (saveData.achievements.includes(id)) return; // 已解锁则跳过（幂等）
+    const def = ACHIEVEMENTS.find(a => a.id === id);
+    if (!def) return;
+    saveData.achievements.push(id);
+    saveSave();
+    addLog(`🏆 解锁成就「${def.name}」：${def.desc}`, 'info');
+    renderAchievements();
+  }
+
+  function renderAchievements() {
+    const el = document.getElementById('menu-achievements');
+    if (!el) return;
+    const got = saveData.achievements || [];
+    const total = ACHIEVEMENTS.length;
+    const rows = ACHIEVEMENTS.map(a => {
+      const unlocked = got.includes(a.id);
+      return `<div class="ach-row ${unlocked ? 'unlocked' : 'locked'}">${unlocked ? '🏆' : '🔒'} <strong>${a.name}</strong> — ${a.desc}</div>`;
+    }).join('');
+    el.innerHTML = `<div class="ach-count">成就 ${got.length}/${total}</div>` + rows;
+  }
+
+  // ---- 单位图鉴（方向3 系统新创 · 纯展示档案面板） ----
+  // 在主菜单「单位图鉴」面板列出全部可用单位（数据驱动自 CODEX_ROSTER），展示阵营/定位/HP/移动/技能。
+  // 纯展示、零战斗影响：不读取战斗状态、不参与任何结算路径，仅渲染只读档案 HTML。
+  function renderCodex() {
+    const el = document.getElementById('menu-codex');
+    if (!el) return;
+    const rows = CODEX_ROSTER.map(u => {
+      const facName = (u.faction && FACTIONS[u.faction]) ? FACTIONS[u.faction].name : '—';
+      const skills = (u.skills || []).map(sk => {
+        const def = SKILL_DEFS[sk];
+        if (!def) return '';
+        return `<div class="codex-skill">· ${def.name}：${def.desc}</div>`;
+      }).join('');
+      return `<div class="codex-card">
+        <div class="codex-name"><span class="codex-dot" style="background:${u.color}"></span>${u.name}${u.isBoss ? ' <span style="color:#ffd54f">★</span>' : ''}</div>
+        <div class="codex-meta">阵营 ${facName} · ${u.category}<br>HP ${u.maxHp} · 移动 ${u.moveRange}</div>
+        ${skills}
+      </div>`;
+    }).join('');
+    el.innerHTML = `<div class="codex-grid">${rows}</div>`;
   }
 
   // ---- 弹窗 ----
@@ -1365,6 +1666,9 @@ const Game = (() => {
         if (sk.isShield) s += 14; // 护盾：preemptive mitigation 价值
         if (sk.isSilence) s += 16; // 沉默：反法师控制·封杀施法价值
         if (sk.isVuln) s += 14; // 易伤：集火放大器·放大我方对该目标伤害价值
+        if (sk.isFear) s += 14; // 恐惧：恐慌撤退·强制位移控制价值
+        if (sk.isPull) s += 14; // 拉拽：即时拉近·强制位移控制价值（与恐惧正交）
+        if (sk.isEmpower) s += 14; // 强化：友方进攻增益·提升友方输出伤害价值（与易伤正交·一 buff 一 debuff）
       });
       s += (u.moveRange || 0) * 5; // 机动性
       return sum + s;
@@ -1417,15 +1721,17 @@ const Game = (() => {
       currentMap: currentMap ? { id: currentMap.id, name: currentMap.name, cover: currentMap.cover, hazard: currentMap.hazard } : null,
       saveData: { ...saveData },
       floaters: floaters.map(f => ({ gx: f.gx, gy: f.gy, text: f.text, kind: f.kind, life: f.life })),
+      logs: logs.map(l => ({ text: l.text, type: l.type })), // 战斗日志（方向4 Battle Journal）· 供纯 Node 测试断言
+      validTargets: computeValidTargets(), // 施法目标预览（方向4 体验打磨）· 供方向5 纯 Node 断言合法落点
       units: units.map(u => ({
         id: u.id, name: u.name, team: u.team, faction: u.faction, isBoss: u.isBoss,
         hp: u.hp, maxHp: u.maxHp, gx: u.gx, gy: u.gy, moveRange: u.moveRange,
-        acted: u.acted, stunned: u.stunned, burnTurns: u.burnTurns, frozenTurns: u.frozenTurns, poisonTurns: u.poisonTurns, blindTurns: u.blindTurns, silenceTurns: u.silenceTurns, vulnTurns: u.vulnTurns, tauntTurns: u.tauntTurns, taunterId: u.taunterId, shield: u.shield, shieldTurns: u.shieldTurns,
-        skills: u.skills.map(s => ({ key: s.key, name: s.name, dmg: s.dmg, range: s.range, cooldown: s.cooldown, cd: s.cd, isHeal: !!s.isHeal, isStun: !!s.isStun, isBurn: !!s.isBurn, isFreeze: !!s.isFreeze, isPoison: !!s.isPoison, isBlind: !!s.isBlind, isTaunt: !!s.isTaunt, isShield: !!s.isShield, isSilence: !!s.isSilence, isVuln: !!s.isVuln, aoeRadius: s.aoeRadius })),
+        acted: u.acted, stunned: u.stunned, burnTurns: u.burnTurns, frozenTurns: u.frozenTurns, poisonTurns: u.poisonTurns, blindTurns: u.blindTurns, silenceTurns: u.silenceTurns, vulnTurns: u.vulnTurns, tauntTurns: u.tauntTurns, taunterId: u.taunterId, shield: u.shield, shieldTurns: u.shieldTurns, empowerTurns: u.empowerTurns,
+        skills: u.skills.map(s => ({ key: s.key, name: s.name, dmg: s.dmg, range: s.range, cooldown: s.cooldown, cd: s.cd, isHeal: !!s.isHeal, isStun: !!s.isStun, isBurn: !!s.isBurn, isFreeze: !!s.isFreeze, isPoison: !!s.isPoison, isBlind: !!s.isBlind, isTaunt: !!s.isTaunt, isShield: !!s.isShield, isSilence: !!s.isSilence, isVuln: !!s.isVuln, isPull: !!s.isPull, isEmpower: !!s.isEmpower, aoeRadius: s.aoeRadius })),
       })),
     };
   }
 
   // 暴露给 HTML onclick 的方法
-  return { startMove, endTurn, skipUnit, castSkill, restart, closeOverlay, cancelAction, startCampaign, startSkirmish, showMenu, setDifficulty, _state, _perf, evaluateSideScore, predictOutcome, updateBattlePrediction };
+  return { startMove, endTurn, skipUnit, castSkill, restart, closeOverlay, cancelAction, startCampaign, startSkirmish, showMenu, setDifficulty, setPlayerFaction, renderCodex, _state, _perf, evaluateSideScore, predictOutcome, updateBattlePrediction };
 })();

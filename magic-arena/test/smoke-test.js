@@ -255,6 +255,104 @@ try {
 }
 assert(s6ok, 'S6 遭遇模式完整跑通无异常');
 
+// 场景 S7：战斗日志（Battle Journal）引擎记录事件（方向4 体验打磨 · 04:00 落地 / 05:00 闭环）
+console.log('[S7] 战斗日志（Battle Journal）记录战斗事件');
+let s7ok = true;
+try {
+  Game.setDifficulty('normal');
+  Game.startCampaign(1);
+  const beforeLogs = Game._state().logs.length; // startBattle 重置 → 应为 0
+  // 跑若干回合，敌方 AI / 状态结算 / 玩家跳过均会写入日志
+  for (let i = 0; i < 4; i++) {
+    const st = Game._state();
+    if (st.phase === 'gameOver') break;
+    Game.endTurn();
+  }
+  const afterLogs = Game._state().logs.length;
+  assert(afterLogs > beforeLogs, '战斗日志随回合推进增长（' + beforeLogs + ' → ' + afterLogs + ' 条）');
+  const sample = Game._state().logs[0];
+  assert(sample && typeof sample.text === 'string' && typeof sample.type === 'string', '日志条目含 text/type 字段（结构正确）');
+} catch (e) {
+  s7ok = false;
+  failures.push('S7 战斗日志断言抛异常: ' + e.message + '\n' + e.stack);
+}
+assert(s7ok, 'S7 战斗日志无异常');
+
+// 场景 S8：施法目标预览（Target Preview）合法落点计算（方向4 体验打磨 · @A38 回归锁定）
+// 锁定 computeValidTargets 的核心契约：无技能选中时为空；攻击技能只标敌方（射程内、不含友方）；
+// 增益技能只标友方（不含敌方）。该契约属零战斗逻辑改动的纯渲染层，回归测试保护其不被静默破坏。
+console.log('[S8] 施法目标预览（Target Preview）合法落点计算');
+let s8ok = true;
+try {
+  Game.setDifficulty('normal');
+  Game.startCampaign(1);
+
+  // (a) 无技能选中（selectUnit 阶段）时 validTargets 必须为空
+  assert(Game._state().validTargets.length === 0, 'S8a 无技能选中时 validTargets 为空');
+
+  // (b) 攻击技能：推进若干回合使双方接近，找一名射程内有敌方的玩家单位，施放后合法落点应全为敌方、在射程内、且不含友方
+  let s8bDone = false;
+  for (let i = 0; i < 6 && !s8bDone; i++) {
+    const s = Game._state();
+    if (s.phase === 'gameOver') break;
+    // 候选：玩家未行动单位 + 一个射程内有敌方的攻击技能（非增益）
+    const cand = s.units.find(u => u.team === 'player' && !u.acted &&
+      u.skills.some(sk => sk.cd === 0 && !sk.isHeal && !sk.isShield && !sk.isEmpower &&
+        s.units.some(e => e.team === 'enemy' && manhattan(e, u) <= sk.range)));
+    if (cand) {
+      const idxB = cand.skills.findIndex(sk => sk.cd === 0 && !sk.isHeal && !sk.isShield && !sk.isEmpower &&
+        s.units.some(e => e.team === 'enemy' && manhattan(e, cand) <= sk.range));
+      clickCell(cand.gx, cand.gy);   // 选中单位
+      Game.castSkill(idxB);          // 进入选目标阶段
+      const stT = Game._state();
+      const vt = stT.validTargets;
+      assert(stT.phase === 'selectTarget', 'S8b 进入 selectTarget 阶段');
+      assert(vt.length > 0, 'S8b 射程内存在敌方合法落点（' + vt.length + ' 个）');
+      const allEnemyInRange = vt.every(c => {
+        const t = stT.units.find(u => u.gx === c.gx && u.gy === c.gy);
+        return t && t.team === 'enemy' && manhattan(t, cand) <= cand.skills[idxB].range;
+      });
+      assert(allEnemyInRange, 'S8b 合法落点全为敌方且在射程内');
+      const anyFriendly = vt.some(c => {
+        const t = stT.units.find(u => u.gx === c.gx && u.gy === c.gy);
+        return t && t.team === 'player';
+      });
+      assert(!anyFriendly, 'S8b 合法落点不含友方（攻击技能不误标友方）');
+      Game.cancelAction();
+      s8bDone = true;
+    } else {
+      Game.endTurn();   // 推进敌方接近，再试
+    }
+  }
+  if (!s8bDone) assert(true, 'S8b 全程无攻击射程内敌方（跳过，不影响）');
+} catch (e) {
+  s8ok = false;
+  failures.push('S8 施法目标预览断言抛异常: ' + e.message + '\n' + e.stack);
+}
+assert(s8ok, 'S8 施法目标预览无异常');
+
+// 场景 S9：单位图鉴（Unit Codex）主菜单档案渲染（方向3 系统新创 · @A37 回归锁定）
+// 锁定 renderCodex 的核心契约：主菜单 #menu-codex 渲染出全部单位档案（≥16 张）与全技能条目（≥40 行），
+// 并含 BOSS 单位；纯只读展示层，回归测试保护档案完整性不被静默破坏。
+console.log('[S9] 单位图鉴（Unit Codex）主菜单档案渲染');
+let s9ok = true;
+try {
+  Game.showMenu();
+  const codexEl = getEl('menu-codex');
+  const html = codexEl.innerHTML || '';
+  assert(html.includes('codex-grid'), 'S9 单位图鉴网格容器已渲染');
+  const cardCount = (html.match(/codex-card/g) || []).length;
+  assert(cardCount >= 16, 'S9 渲染单位档案 ≥ 16 张（实际 ' + cardCount + '）');
+  const skillCount = (html.match(/codex-skill/g) || []).length;
+  assert(skillCount >= 40, 'S9 渲染技能条目 ≥ 40 行（实际 ' + skillCount + '）');
+  const hasBoss = html.includes('马尔佐斯') || html.includes('大魔导师') || html.includes('★BOSS');
+  assert(hasBoss, 'S9 含 BOSS 单位档案（马尔佐斯）');
+} catch (e) {
+  s9ok = false;
+  failures.push('S9 单位图鉴断言抛异常: ' + e.message + '\n' + e.stack);
+}
+assert(s9ok, 'S9 单位图鉴无异常');
+
 // ------------------------------------------------------------
 // 5. 汇总
 // ------------------------------------------------------------

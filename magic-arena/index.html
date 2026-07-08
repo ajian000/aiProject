@@ -52,7 +52,7 @@ canvas { border-radius: 8px; cursor: pointer; }
 #battle-predict { background: #16213e; border-radius: 8px; padding: 12px; min-height: 96px; }
 #battle-predict-panel h3 { color: #e0a0ff; margin-bottom: 8px; }
 #menu { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(10,10,35,0.94); display: none; justify-content: center; align-items: center; z-index: 20; }
-#menu-panel { background: #16213e; border-radius: 12px; padding: 28px 36px; text-align: center; max-width: 420px; }
+#menu-panel { background: #16213e; border-radius: 12px; padding: 28px 36px; text-align: center; max-width: 420px; max-height: 92vh; overflow-y: auto; }
 #menu-panel h1 { color: #f0c27f; font-size: 28px; margin-bottom: 8px; }
 #menu-panel p { color: #a0d0ff; margin-bottom: 16px; font-size: 14px; }
 #menu-section-title { color: #e0a0ff; text-align: left; margin: 14px 0 8px; font-size: 14px; font-weight: bold; }
@@ -64,8 +64,25 @@ canvas { border-radius: 8px; cursor: pointer; }
 .diff-btn { flex: 1; padding: 8px; background: #0f3460; border: 1px solid #533483; border-radius: 8px; color: #e0e0e0; cursor: pointer; font-size: 13px; }
 .diff-btn:hover { background: #533483; }
 .diff-btn.active { background: #533483; border-color: #f0c27f; color: #f0c27f; font-weight: bold; }
+#menu-faction { color: #a0d0ff; margin: 4px 0 6px; font-size: 13px; }
+.faction-row { display: flex; gap: 8px; margin-bottom: 8px; }
+.faction-btn { flex: 1; padding: 8px; background: #0f3460; border: 1px solid #533483; border-radius: 8px; color: #e0e0e0; cursor: pointer; font-size: 13px; }
+.faction-btn:hover { background: #533483; }
+.faction-btn.active { background: #533483; border-color: #ffd54f; color: #ffd54f; font-weight: bold; }
 #overlay-action { padding: 12px 32px; background: #533483; border: none; border-radius: 8px; color: #fff; cursor: pointer; font-size: 16px; margin: 4px; }
 #overlay-action:hover { background: #7b4fa0; }
+#menu-achievements { background: #0f3460; border-radius: 8px; padding: 10px 12px; margin: 10px 0; max-height: 190px; overflow-y: auto; font-size: 12px; text-align: left; }
+.ach-count { color: #f0c27f; font-weight: bold; margin-bottom: 6px; }
+.ach-row { padding: 3px 0; color: #c8c8d0; line-height: 1.5; }
+.ach-row.unlocked { color: #ffd54f; }
+.ach-row.locked { color: #6f6f80; }
+#menu-codex { background: #0f3460; border-radius: 8px; padding: 10px 12px; margin: 10px 0; max-height: 240px; overflow-y: auto; text-align: left; font-size: 11px; }
+.codex-grid { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+.codex-card { width: 116px; background: #16213e; border: 1px solid #533483; border-radius: 8px; padding: 6px 8px; text-align: left; }
+.codex-card .codex-name { font-weight: bold; color: #f0c27f; font-size: 12px; margin-bottom: 2px; }
+.codex-card .codex-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 4px; vertical-align: middle; }
+.codex-card .codex-meta { color: #a0d0ff; font-size: 10px; margin-bottom: 4px; line-height: 1.4; }
+.codex-card .codex-skill { color: #c8c8d0; font-size: 10px; line-height: 1.45; }
 </style>
 </head>
 <body>
@@ -101,6 +118,16 @@ canvas { border-radius: 8px; cursor: pointer; }
       <button class="diff-btn active" id="diff-normal" onclick="Game.setDifficulty('normal')">普通</button>
       <button class="diff-btn" id="diff-hard" onclick="Game.setDifficulty('hard')">困难</button>
     </div>
+    <div id="menu-section-title">出场阵营（决定我方小队构成）</div>
+    <div id="menu-faction">当前出场阵营: 经典（三阵营混编）</div>
+    <div class="faction-row">
+      <button class="faction-btn active" id="faction-classic" onclick="Game.setPlayerFaction('classic')">经典（混编）</button>
+      <button class="faction-btn" id="faction-light" onclick="Game.setPlayerFaction('light')">圣光（守护/治疗）</button>
+    </div>
+    <div id="menu-section-title">成就</div>
+    <div id="menu-achievements"></div>
+    <div id="menu-section-title">单位图鉴（全单位档案）</div>
+    <div id="menu-codex"></div>
     <div id="menu-section-title">战役模式（选择关卡）</div>
     <div id="menu-levels"></div>
     <div id="menu-section-title">快速对战</div>

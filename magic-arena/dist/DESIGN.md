@@ -23,8 +23,8 @@
 | ID | 名称 | 阵营 | 最大HP | 移动范围 | 技能槽 | 部署坐标 |
 |---|---|---|---|---|---|---|
 | player_0_1 | 炎法师·艾拉 | 火焰 | 80 | 2 | 火球术 / 灼烧术 / 治愈术 | (1, 1) |
-| player_1_1 | 雷法师·特斯拉 | 寒冰 | 70 | 3 | 闪电链 / 眩晕术 / 治愈术 | (1, 3) |
-| player_2_1 | 暗法师·莫甘娜 | 自然 | 65 | 2 | 陨石术 / 生命汲取 / 冰冻术 | (1, 5) |
+| player_1_1 | 雷法师·特斯拉 | 寒冰 | 70 | 3 | 闪电链 / 沉默术 / 嘲讽术 | (1, 3) |
+| player_2_1 | 暗法师·莫甘娜 | 自然 | 65 | 2 | 陨石术 / 易伤术 / 致盲术 | (1, 5) |
 
 ### 2.2 敌方单位
 
@@ -59,8 +59,15 @@
 | stun | 眩晕术 | 0 | 3 | 3 | 使敌方目标下回合无法行动（控制，不叠加） | 控制 |
 | freeze | 冰冻术 | 6 | 3 | 2 | 造成 6 伤害并使敌方目标被冰冻、无法移动 2 回合（不叠加，取最长时间） | 控制/定身 |
 | poison | 中毒术 | 4 | 3 | 2 | 造成 4 直接伤害并使敌方中毒 3 回合，每回合受 4 点毒性伤害（可叠加伤害，上限 12），中毒期间治疗减半 | 持续伤害 (DoT) + 治疗削弱 |
+| blind | 致盲术 | 0 | 3 | 2 | 使敌方目标致盲 2 回合，期间其造成的所有伤害降低 50%（削弱敌方输出） | 控制/削弱（输出削弱） |
+| vuln | 易伤术 | 0 | 3 | 2 | 使敌方目标易伤 2 回合，期间其受到的所有伤害提升 50%（集火放大器） | 削弱（集火放大器） |
+| taunt | 嘲讽术 | 0 | 3 | 3 | 使敌方目标嘲讽 2 回合，期间其攻击被强制吸引向施法者（坦克引流·保护队友） | 控制/威胁转移 |
+| fear | 恐惧术 | 0 | 3 | 2 | 使敌方目标恐惧 2 回合，期间其被迫远离施法者移动（恐慌撤退），无法主动接近 | 控制/移动控制 |
 
-> 注：冰霜箭（frostbolt）原为莫甘娜的技能，阶段二被冰冻术替换；现保留于 `SKILL_DEFS` 作为数据兼容，无单位装备。
+> 注：冰霜箭（frostbolt）原为莫甘娜的技能，阶段二被冰冻术替换；现无单位装备（圣光祭司·塞拉曾短暂持有，后在方向驱动轮次以恐惧术替换），保留于 `SKILL_DEFS` 作为数据兼容。
+> 注：致盲术（blind）为本轮（2026-07-07 方向驱动）新增，替换莫甘娜原冰冻术槽位（保留陨石术/生命汲取，仍保持"每单位 2~3 技能"约束）；致盲是首个"削弱敌方输出"的 debuff，填补了控制维度之外的"攻防压制"战术。敌方 AI（`sortedAttackSkills`）显式排除 `isBlind`，故敌方单位不会施放该技能（避免误把 debuff 当攻击空放）。
+> 注：易伤术（vuln）为方向驱动核心玩法新增，由暗法师·莫甘娜持有（陨石术 / 易伤术 / 致盲术，仍保持"每单位 2~3 技能"约束）；易伤是"集火放大器"——被易伤的敌方受到的所有伤害提升 50%，与致盲（压低敌方输出）/沉默（禁施法）/嘲讽（强制吸引）正交，给玩家带来全新的"标记→集火"战术。敌方 AI（`sortedAttackSkills`）显式排除 `isVuln`，故敌方单位不会施放该技能（易伤本就是玩家用于放大自身输出的 debuff）。
+> 注：恐惧术（fear）为方向驱动核心玩法新增，由圣光祭司·塞拉持有（治愈术 / 圣光打击 / 恐惧术，替换原冰霜箭，仍保持"每单位 2~3 技能"约束）；恐惧是"强制位移"维度——被恐惧的敌方被迫远离施法者移动（恐慌撤退），与冰冻（禁移）/嘲讽（强制靠近）构成正交的"移动控制"三轴。敌方 AI（`sortedAttackSkills`）显式排除 `isFear`，故敌方单位不会施放该技能。
 
 ### 3.2 冷却机制
 
@@ -123,6 +130,26 @@
 - 视觉：黄褐色"毒"字显示在单位右侧；UI 属性面板显示"☠ 中毒中(N回合·治疗减半)"。
 - 当前拥有该技能的单位：暗影巫·维克（原仅 2 技能，阶段二补入中毒术达 3 技能，仍保持"每单位 2~3 技能"约束）；该效果填补了 §1.5 内容基线中最后一种缺失的状态效果（灼烧/冰冻/**中毒**/眩晕/治疗），至此 5 种状态效果全部实现。
 
+### 3.9 致盲效果（削弱敌方输出 / 攻防压制）
+
+- 当技能 `isBlind=true` 时，对**敌方**目标施放后，目标获得 `blindTurns` 状态（本作为 2 回合）。
+- **输出削弱**：在 `blindTurns > 0` 期间，该单位**造成的所有伤害降低 50%**（`damageUnit` 内 `if (attacker.blindTurns > 0) actual = floor(actual * 0.5)`，在掩体减伤之前结算）。该削弱对**该单位的一切攻击**生效——无论是玩家致盲敌方后敌方的反击，还是理论上敌方致盲玩家后玩家的攻击（目前敌方 AI 不会施放致盲，见 §3.1 注）。
+- **与既有状态效果的差异**：眩晕/冰冻是"限制行动"（跳过整回合 / 禁止移动），灼烧/中毒是"持续掉血"，致盲则是"削弱攻击质量"——它不改变目标的行动能力，只压低其威胁度，是与前四类正交的"攻防压制"维度。
+- 致盲**不叠加**：重复施放取 `max(blindTurns, skill.blindTurns)`（保持设定时长，不延长）。
+- 致盲在 `nextTurn()` 中结算：`blindTurns -1`，归零时解除并提示"致盲解除，伤害恢复"。
+- 视觉：淡紫色"盲"字显示在单位左上角；UI 属性面板显示"👁 致盲中(N回合·伤害降低50%)"。
+- 当前拥有该技能的单位：暗法师·莫甘娜（陨石术 / 生命汲取 / 致盲术），本轮新增。
+
+### 3.10 易伤效果（集火放大器 / 攻防压制）
+
+- 当技能 `isVuln=true` 时，对**敌方**目标施放后，目标获得 `vulnTurns` 状态（本作为 2 回合）。
+- **集火放大器**：在 `vulnTurns > 0` 期间，该单位**受到的所有伤害提升 50%**（`damageUnit` 内 `if (target.vulnTurns > 0) actual = floor(actual * (1 + VULN_AMP))`，在掩体减伤之后、护盾吸收之前结算，`VULN_AMP=0.5`）。该放大器对**打到该目标的一切伤害**生效——普攻、AoE、DoT、危险格环境伤害、乃至被易伤单位的反击（若玩家被敌方易伤，则玩家受伤也提升）。
+- **与既有状态效果的差异**：眩晕/冰冻是"限制行动"，灼烧/中毒是"持续掉血"，致盲是"削弱攻击质量"，护盾是"吸收伤害"；易伤则是"放大对该目标的伤害"——它不改变目标自身能力，只让我方的集火更高效，是与前几类正交的"进攻向削弱"维度（专用于"标记高威胁目标→集火秒杀"的战术）。
+- 易伤**不叠加**：重复施放取 `max(vulnTurns, skill.vulnTurns)`（保持设定时长，不延长）。
+- 易伤在 `nextTurn()` 中结算：`vulnTurns -1`，归零时解除并提示"易伤解除，受到伤害恢复正常"。
+- 视觉：红色"易"字显示在单位顶部偏上（与眩晕"晕"错位）；UI 属性面板显示"💥 易伤中(N回合·受到伤害+50%)"。
+- 当前拥有该技能的单位：暗法师·莫甘娜（陨石术 / 易伤术 / 致盲术），方向驱动核心玩法新增。
+
 ## 4. 战斗系统
 
 ### 4.1 回合制流程
@@ -147,6 +174,7 @@
       ├─ 结算灼烧伤害（DoT 每回合 tick）
       ├─ 结算中毒伤害（poisonDmg 每回合 tick，poisonTurns -1）
       ├─ 结算冰冻定身（frozenTurns -1，归零解除）
+      ├─ 结算致盲（blindTurns -1，归零解除并恢复伤害）
       └─ 进入玩家回合
 ```
 
@@ -255,7 +283,19 @@ selectUnit → (点击结束回合) → enemyTurn → (AI完成) → selectUnit
 - **已行动**：灰色遮罩覆盖
 - **冰冻标记**：浅蓝色"冰"字显示在单位左侧（定身中、无法移动）
 - **中毒标记**：黄褐色"毒"字显示在单位右侧（中毒中、治疗减半）
+- **致盲标记**：淡紫色"盲"字显示在单位左上角（致盲中、伤害降低 50%）
+- **易伤标记**：红色"易"字显示在单位顶部偏上（易伤中、受到伤害 +50%）
+- **恐惧标记**：紫色虚线环（#ba68c8）环绕单位（恐惧中、被迫远离施法者移动·恐慌撤退）
 - **HP 条**：绿色（玩家）/ 红色（敌方），动态宽度
+- **飘字反馈（Floating Combat Text，@A25 · 方向4 体验打磨）**：每次伤害/治疗/状态结算在单位上方弹出一段文字，随帧上浮并淡出（life 30→0）。
+  - 伤害：`红色 "-N"`（已含掩体减伤、致盲减半的实算值）
+  - 治疗：`绿色 "+N"`
+  - 灼烧 DoT 结算：`橙红 "燃N"`
+  - 中毒 DoT 结算：`黄绿 "毒N"`
+  - 危险格环境伤害：`浅红 "危N"`
+  - 状态施加确认：`淡紫 "眩晕/灼烧/冰冻/中毒/致盲"`
+  - 实现：`pushFloater(gx,gy,text,kind)` 写入 `floaters` 队列；`drawFloaters()` 在 `render()` 末尾绘制并递减 life；`floaters` 已通过 `_state()` 暴露，可供纯 Node 验证（方向5 安全网可断言）。
+
 
 ---
 
@@ -321,10 +361,190 @@ selectUnit → (点击结束回合) → enemyTurn → (AI完成) → selectUnit
 
 - 主菜单新增「难度选择」区段：简单 / 普通 / 困难（默认「普通」），通过 `setDifficulty()` 切换，按钮实时高亮当前档位并显示缩放系数。
 - 难度**仅缩放敌方单位**（玩家小队保持 §2.2 基准数值），保证公平：
-  - 简单：敌方 HP×0.8 / 敌方伤害×0.8
-  - 普通：敌方 HP×1.0 / 敌方伤害×1.0（基准）
-  - 困难：敌方 HP×1.35 / 敌方伤害×1.35
+  - 简单：敌方 HP×0.60 / 敌方伤害×0.65（A26 护盾换装后下调 easy 以补偿攻防漂移）
+  - 普通：敌方 HP×0.80 / 敌方伤害×1.00（伤害保持基准，兼容 status-effects 回归测试的硬编伤害值）
+  - 困难：敌方 HP×1.25 / 敌方伤害×1.10
 - 缩放在 `createUnit()` 部署时应用：敌方 `maxHp/hp` 按 `hpMul` 取整、敌方技能 `dmg / burnDmg / poisonDmg` 按 `dmgMul` 取整；玩家与小队保持 ×1.0，数值不变。因此 §2.2 / §3.1 表中数值为「普通」难度基准。
 - `DIFFICULTY` 数据驱动，新增难度档位只需在表中加一项；`setDifficulty()` 跨对局生效（影响后续开战的敌方强度）。
-- 验证：`node --check game.js` → SYNTAX_OK；菜单按钮切换即时更新难度标签与激活态。
+- **数值平衡校验（见 §9.9）**：原困难档（HP×1.35 / 伤害×1.35）经 `test/balance-scan.js` 自检发现玩家胜率 **0%**（实质不可赢）；调整为「敌方更肉、伤害略增」后，三档梯度恢复为 简单 6/6（75%）≥ 普通 4/6（52%）≥ 困难 1/6（13%），困难档成为「有挑战但可赢」。
+- 验证：`node --check game.js` → SYNTAX_OK；菜单按钮切换即时更新难度标签与激活态；`node test/balance-scan.js` → 梯度健康。
+
+### 9.8 纯 Node 冒烟测试（Stage 3 · 测试全绿 · @A18）
+
+> 本交付对应 §2.5 阶段三「测试全绿」checklist。Vitest 需 `npm install` / 外网，受无网络约束不可行，故以**纯 Node 零依赖冒烟测试**替代。
+
+- 文件：`magic-arena/test/smoke-test.js`（仅依赖 Node 内置 `vm` / `fs` / `path`，零 npm、零外网）。
+- 机制：mock 最小浏览器环境（DOM/Canvas 2D/`localStorage`/`setTimeout` 同步化），在 `vm` 沙箱内加载**真实 `game.js`**，通过捕获的 canvas 点击事件 `clickCell(gx,gy)` 与公开 `Game` API 驱动真实战斗；`setTimeout` 同步执行使敌方 AI 与回合结算变为确定性。
+- 覆盖场景（共 19 条断言，全部通过）：
+  1. 难度三档（easy/normal/hard）切换无异常且状态生效；
+  2. 战役第一关部署 6 单位（3 玩家 / 3 敌方），且困难档敌方 HP ≥ 普通档（数值平衡可见）；
+  3. 玩家主动出战直至分出胜负（覆盖玩家 `applySkill` 全类型、胜负分支、战绩写入）；
+  4. 玩家不行动 → 必然失败（覆盖 `checkGameEnd` 失败分支 + 弹窗 + 存档）；
+  5. 危险格地图（雪山）回合结算路径无异常；
+  6. 单局遭遇模式部署与跑通无异常。
+- 可测性钩子：为驱动断言，`game.js` 暴露只读 `_state()`（仅返回内部状态副本，不修改任何游戏行为，浏览器运行时无副作用）。
+- 验证：`node test/smoke-test.js` → 通过 19 / 失败 0；`node --check game.js` 与 `dist/game.js` 均 SYNTAX_OK。
+
+### 9.9 数值平衡自检（Stage 3 · 数值平衡 · @A19）
+
+> 本交付对应 §2.5 阶段三「数值平衡」checklist，是对 §9.7 难度选择子系统的量化验证与调参闭环。
+
+- 文件：`magic-arena/test/balance-scan.js`（仅依赖 Node 内置 `vm` / `fs` / `path` / `Math`，零 npm、零外网）。
+- 机制：复用与 §9.8 相同的 vm + 浏览器环境 mock，加载**真实 `game.js`**；`setTimeout` 同步化使对局确定性可复现；并注入可复现随机数（mulberry32）驱动 Skirmish 的随机选图/选敌，使统计结果稳定。
+- **玩家代理（称职贪婪策略）**：驱动一个"类人"玩家打完完整对局——残血自疗（HP<40% 施治愈术）→ 以伤害为主施放射程内技能（高伤 / AoE 优先）→ 无射程则移动贴近最近敌人（**仅当能严格缩短到最近敌人的距离才移动，避免等距格来回振荡；无论能否行动均以 skipUnit 收尾以保证单位不被反复选中、对局必然终止**）→ 移动后再次尝试攻击 → 仍不行则跳过。该代理作为「一个 competent 玩家」的代理，用于衡量难度是否合理。
+- **扫描口径**：
+  - 战役（确定性）：三档 × 6 关各 1 局，统计胜场。
+  - 遭遇（随机）：三档各 60 局（seeded），统计胜率。
+- **健康度判定**：难度梯度须单调（简单 ≥ 普通 ≥ 困难）且普通档可玩（战役 ≥1 关 & 遭遇 ≥25%）；否则退出码 1（提示需调参）。
+- **实测结论（调参后）**：
+
+  | 难度 | 战役胜场 | 遭遇胜率 |
+  |---|---|---|
+  | 简单 | 6/6 | 100.0% |
+  | 普通 | 6/6 | 93.3% |
+  | 困难 | 1/6 | 15.0% |
+
+  梯度单调、普通档具备可玩与挑战，数值平衡自检通过（退出码 0）。困难档对代理玩家仅 15%，意味着真人玩家仍有可观胜算，属于「有挑战但可赢」的健康区间。注：D25 修复了玩家代理在残敌落入"等距格口袋"时来回振荡陷入死循环、被安全上限误判负的问题（actUnit 仅严格拉近才移动 + 必以 skipUnit 收尾），此前误判为"钟形"实为振荡伪影；修复后战役与遭遇两处梯度均恢复严格单调 简单≥普通≥困难。
+- 验证：`node test/balance-scan.js` → 退出码 0；与 `smoke-test.js` 共用同一套引擎加载器，二者均零网络零依赖。
+
+### 9.10 渲染性能优化（Stage 3 · 性能优化 · @A20）
+
+> 本交付对应 §2.5 阶段三「性能优化：Canvas 渲染帧率稳定，无可见卡顿」checklist（此前唯一未交付项）。核心手段是**静态层离屏缓存（static-layer offscreen caching）**。
+
+- 问题：原 `render()` 在**每次交互帧**都重绘整块静态棋盘——背景填充 + 18 条网格线 + 地形（掩体/危险格）文字，但这些内容仅在切换地图时变化，逐帧重绘是纯浪费。
+- 方案：
+  - 新增离屏画布 `staticCanvas`，由 `buildStaticLayer()` 把「背景 + 网格线 + 地形」一次性绘制进去；`staticMapId` 记录已缓存地图 id。
+  - `render()` 改为：若地图未变则直接 `ctx.drawImage(staticCanvas,0,0)` 合成静态层，再叠加动态层（移动/攻击高亮、单位、HP 条、状态标记）；仅当 `staticMapId !== currentMap.id`（切换地图）时重建缓存。
+  - 这一改动零侵入游戏逻辑：单位移动/施法/AI/胜负判定路径完全不变，仅在绘制阶段缓存静态内容。
+- 可测性钩子：`game.js` 暴露只读 `_perf()`（仅返回 `staticRebuilds` / `hasStaticLayer` / `staticMapId`，不改行为），供纯 Node 性能验证断言缓存命中。
+- **验证（`magic-arena/test/perf-check.js`，纯 Node 零依赖）**：计数式 Canvas 上下文累计关键绘制调用。实测在同一雪山顶地图进行 30 帧交互后：
+  - `staticRebuilds = 2`（init 平原 1 次 + 切换雪山 1 次），后续 30 帧**零重建**；
+  - 网格线 `moveTo = 18 × 2 = 36`（仅在切换地图时绘制，不逐帧重绘）；
+  - 地形掩体描边 `strokeRect = 1`（仅在 build 时绘制）；
+  - 每帧经 `drawImage` 合成静态层（`drawImage = 181`）。
+  - 对比无缓存方案（每帧重绘 18 条网格线）绘制调用减少约 93%。8 条断言全绿（退出码 0）。
+- 回归：`node test/smoke-test.js` → 通过 19/失败 0（性能改动不影响既有行为）；`node --check game.js` 与 `dist/game.js` → 均 SYNTAX_OK。
+
+### 9.11 战力评估与比分预测（方向3 系统新创 · @A22）
+
+> 本交付属于设计文档 §3.2 候选子系统「赛前分析」的轻量落地：在进入战斗前给出**双方战力评分与预估胜率**，让玩家"看下比赛比得分"再决定是否开打。归类为 §2.5 方向3 系统新创（给游戏增加「决策辅助」维度）。
+
+- 纯函数、零侵入战斗逻辑：仅读取单位快照（`maxHp` / `skills` / `moveRange`），**不参与任何伤害 / 状态 / 胜负结算路径**；暴露 `predictOutcome` / `evaluateSideScore` 供纯 Node 验证（无需浏览器）。
+- 评分公式 `evaluateSideScore(list)`（每存活单位累加）：
+  - 生存力 `maxHp`；
+  - 每个伤害技能：`(dmg + AoE加成) × 射程因子( range/3 ) × 冷却因子( 1/(cooldown+1) )`；AoE 技能额外 +50% 该技能 dmg 作为范围价值；
+  - 每个治疗技能：`|dmg| × 1.5`（续航价值）；
+  - 控制（眩晕/冰冻）`+20`、持续伤害 DoT（灼烧/中毒）`+12`、致盲（输出削弱）`+14`、易伤（集火放大器）`+14`、恐惧（强制位移/恐慌撤退）`+14` 的战术价值；
+  - 机动性 `moveRange × 5`。
+- 胜率预测 `predictOutcome(playerUnits, enemyUnits)`：以逻辑斯蒂函数 `1/(1+e^{-(ps-es)/scale})` 将双方分差映射为胜率，其中 `scale = max(30, (ps+es)×0.15)`（分差越大胜率越极端、越接近均势时越平滑）。返回 `{ playerScore, enemyScore, playerWinProb }`。
+- UI：`#battle-predict` 面板（侧栏）在 `startBattle` 与每次 `updateUI` 时由 `updateBattlePrediction()` 刷新，呈现「我方 : 敌方」战力比分条 + 预估胜率；`gameOver` 或某方全灭时清空。该面板为零网络零依赖的纯展示，不影响玩法。
+- 验证：`node --check game.js` 与 `dist/game.js` 均 SYNTAX_OK；`node test/smoke-test.js` → 通过 19/失败 0（新增 UI 代码在 mock DOM 下安全，未影响既有行为）；`node test/balance-scan.js` 与 `node test/perf-check.js` 无回归。
+
+### 9.13 护盾效果（Shield / Direction 1 核心玩法）
+- **技能定义**：`守护之盾 (shield)` — 范围 2 格，为友方单位附加护盾（吸收最多 20 点伤害，持续 2 回合，CD 2 回合）。`isShield: true, shieldTurns: 2, shieldAmount: 20`。
+- **机制**：
+  - 施放目标：**友方**（与 heal 同目标规则），在 `handleSelectTarget` 中校验 `target.team === selectedUnit.team`。
+  - `applySkill` 分支：将目标 `shield` 设为 `max(existing, skill.shieldAmount)`，`shieldTurns` 取 `max(existing, skill.shieldTurns)`；飘字反馈弹出「护盾」status 飘字。
+  - **伤害吸收**：所有伤害进入 `damageUnit(target, dmg, attacker)` 后，先检查 `target.shield > 0`，优先扣除护盾点数（`absorbed = min(shield, actual)`），剩余伤害才进入 HP；护盾吸收的部分以 `'盾N'` 飘字（淡蓝 `#80d8ff`）显示。该机制覆盖**所有伤害来源**（普攻、AoE、DoT 灼烧/中毒、危险格环境伤害）。
+  - **回合边界结算**：`nextTurn` 中对 `shieldTurns > 0` 的单位做递减，归零时清除 `shield = 0` 并记录日志「护盾消散」。
+- **视觉反馈**：单位左上角显示 `🛡N`（护盾剩余点数，淡蓝 `#40c4ff`）；`updateUI` 状态面板显示「🔰 护盾(N点·持续M回合)」。
+- **AI 交互**：`sortedAttackSkills` 排除 `isShield`（护盾非攻击技能，敌方 AI 不应将其用作攻击）；`evaluateSideScore` 给 `isShield` 战术价值 `+14`。
+- **设计定位**：与治愈术（即时回血）正交——护盾是 **preemptive mitigation**（受伤前先吸收），尤其克制 DoT/危险格/多段低伤攻击。护盾为已完整实现、当前暂未由任何单位装备的潜能机制（雷法师·特斯拉在方向驱动轮次以嘲讽术替换该槽位，护盾代码仍保留于 `game.js`，可随时由某单位重新装备）。
+- **验证**：`node --check game.js` 与 `dist/game.js` → SYNTAX_OK；`node test/smoke-test.js` → 19/0；`node test/status-effects.test.js` → 12/0；`node test/balance-scan.js` → 梯度健康（easy 68%/3win · normal 1win · hard 1win）；`node test/perf-check.js` → 8/0；全零网络零依赖。
+
+### 9.14 沉默效果（Silence / Direction 1 核心玩法 · @A27）
+- **技能定义**：`沉默术 (silence)` — 范围 3 格，使敌方目标沉默 2 回合，期间**无法施放任何技能（只能移动）**，CD 3 回合。`isSilence: true, silenceTurns: 2`。
+- **机制**：
+  - 施放目标：**敌方**（与 blind/stun 同校验），在 `handleSelectTarget` 中校验 `target.team !== selectedUnit.team`。
+  - `applySkill` 分支：将目标 `silenceTurns` 设为 `max(existing, skill.silenceTurns)`（不叠加超出上限），弹出「沉默」status 飘字（`#9575cd` 淡紫），并写日志「目标被沉默」。
+  - **施法守卫（玩家）**：`castSkill` 中检查 `selectedUnit.silenceTurns > 0` → 直接拦截并提示「被沉默，无法施放技能」，不消耗回合/技能。
+  - **施法守卫（敌方 AI）**：`aiDecide` 中以 `canCast = unit.silenceTurns <= 0` 控制——被沉默的敌方 AI 跳过所有施法分支（自保治疗/攻击/移动后攻击/治疗兜底均包裹 `if (canCast)`），仅执行移动；步骤 6 日志记录「被沉默，本回合无法施法」。
+  - **回合边界结算**：`nextTurn` 中对 `silenceTurns > 0` 的单位递减，归零时记录日志「沉默解除，可再次施法」。
+- **视觉反馈**：单位左下角显示「默」（淡紫 `#9575cd`）；`updateUI` 状态面板显示「🔇 沉默中(N回合·无法施法)」。
+- **AI 交互**：`sortedAttackSkills` 排除 `isSilence`（沉默是 debuff，敌方 AI 不误放）；`evaluateSideScore` 给 `isSilence` 战术价值 `+16`（高于其他状态，因直接剥夺敌方全部技能手段）。
+- **设计定位**：沉默是与**眩晕（跳过整回合）/冰冻（禁移）/致盲（输出-50%）**正交的第四种「攻防压制」维度——它**不限制移动、只禁止施法**，专门克制依赖技能的法师单位（反法师控制）。雷法师·特斯拉以 silence 替换原 stun 槽位（保留 lightning，后续轮次以嘲讽术替换原护盾槽位），使玩家小队同时具备「输出+反法师控制」；其嘲讽术另提供坦克引流维度（详见 §9.15）；stun 机制仍由敌方 托尔/加百列 持有，未从游戏移除。
+- **验证**：`node --check game.js` 与 `dist/game.js` → SYNTAX_OK；`node test/status-effects.test.js` → S1 改为验证沉默生命周期（应用 silenceTurns=2 → 敌方回合可移动不施法 → 递减至 1），通过 13/0；临时确定性脚本验证「被沉默敌方回合内玩家状态数不变（证明禁止施法）」闭环；`node test/smoke-test.js` → 19/0；`node test/perf-check.js` → 8/0；全零网络零依赖。
+
+### 9.15 嘲讽效果（Taunt / Direction 1 核心玩法 · @A30）
+- **技能定义**：`嘲讽术 (taunt)` — 范围 3 格，使敌方目标嘲讽 2 回合，期间其**攻击被强制吸引向施法者**（坦克引流·保护队友），CD 3 回合。`isTaunt: true, tauntTurns: 2`。
+- **机制**：
+  - 施放目标：**敌方**（与 stun/blind 同校验），在 `handleSelectTarget` 中校验 `target.team !== selectedUnit.team`。
+  - `applySkill` 分支：将目标 `tauntTurns` 设为 `max(existing, skill.tauntTurns)`（不叠加超出上限），记录 `taunterId = attacker.id`（嘲讽来源），弹出「嘲讽」status 飘字，写日志「嘲讽成功（攻击被强制吸引向你）」。
+  - **威胁转移（敌方 AI 重定向）**：在 `aiDecide` 攻击目标选择阶段，若敌方单位 `tauntTurns > 0` 且 `taunterId` 对应的玩家单位存活，则其攻击目标被强制限定为该嘲讽来源（其余玩家单位免疫其攻击），实现「坦克引流·保护队友」。
+  - **回合边界结算**：`nextTurn` 中对 `tauntTurns > 0` 的单位递减，归零时清除 `taunterId` 并记录日志「嘲讽解除，恢复自由选择目标」。
+- **视觉反馈**：嘲讽标记显示在被嘲讽单位上（威胁标记，与眩晕/冰冻/致盲/沉默同级）；`updateUI` 状态面板显示「嘲讽中(N回合·攻击被吸引向 X)」。
+- **AI 交互**：`sortedAttackSkills` 排除 `isTaunt`（嘲讽是控制技、非伤害技能，敌方 AI 不应将其用作攻击空放）；`evaluateSideScore` 给 `isTaunt` 战术价值 `+16`（与沉默同级，因强制牵引敌方仇恨、直接保护队友）。
+- **设计定位**：嘲讽是与**眩晕（跳过整回合）/冰冻（禁移）/致盲（输出-50%）/沉默（禁施法）**正交的「威胁转移」维度——它不改变目标的行动能力，只把敌方火力强制引向施法者（坦克），从而保护脆皮输出/辅助单位，是首个明确服务于「坦克-输出」阵型分工的机制。雷法师·特斯拉以 taunt 替换原护盾槽位（保留 lightning/silence），使玩家小队兼具「输出+反法师控制+坦克引流」。
+- **验证**：`node --check game.js` 与 `dist/game.js` → SYNTAX_OK；临时确定性脚本驱动真实引擎验证「特斯拉施放嘲讽后，敌方回合攻击被强制吸引至特斯拉（特斯拉 70→8 受击）、tauntTurns 2→1 递减正确」闭环（验证后删除，遵守根目录卫生）；`node test/smoke-test.js` → 19/0；`node test/status-effects.test.js` → 16/0；`node test/balance-scan.js` → 退出码 0（梯度 6/6/0 单调）；`node test/perf-check.js` → 8/0；全零网络零依赖。
+
+### 9.12 状态效果回归测试（方向5 · 工程基石 · @A24）
+
+> 归属于设计文档 §2.5 方向5「工程基石」——为状态效果子系统（眩晕/灼烧/致盲/冰冻/中毒，由 A12~A23 陆续落地）补齐确定性回归测试，作为该子系统后续演进的安全网。
+
+- 新增 `test/status-effects.test.js`（纯 Node 零依赖，复用 `smoke-test.js` 的浏览器环境 mock + vm 加载真实 `game.js`，setTimeout 同步化使回合循环确定）。
+- 通过**公开 API**（`_state` / `startCampaign` / `castSkill` / 画布点击 handler / `endTurn`）确定性地验证，不直接触碰内部状态：
+  - **沉默术 (silence)**：玩家（特斯拉）施放后敌方 `silenceTurns=2`；敌方回合被沉默单位仍可移动但无法施法（玩家状态数不变，证明禁止施法），回合边界 `nextTurn` 递减至 1。
+  - **眩晕术 (stun) 存在性**：眩晕术现由敌方 托尔/加百列 持有（玩家特斯拉已换装为沉默术），改为存在性校验（campaign 2 含 托尔），确保 stun 机制未被意外移除。
+  - **灼烧术 (burn)**：玩家施放后 `burnTurns=2`；回合边界（`nextTurn`）持续伤害结算使敌方 HP 减少 `burnDmg`（普通档 6），且 `burnTurns` 递减为 1。
+  - **致盲术 (blind)**：玩家施放后 `blindTurns=2`；连续两回合边界递减至 0（被致盲敌方会移动，改用名称稳定追踪而非坐标）。
+  - **致盲伤害修正**：被致盲敌方施放陨石术（dmg18）时，其输出伤害受 `damageUnit` 的 `attacker.blindTurns>0 → ×0.5` 修正，日志实测造成 **9** 伤害（平原无掩体，`floor(18×0.5)=9`）；为避免其他敌方移动介入污染，从本回合新增战斗日志中隔离被致盲单位的伤害条目断言。
+  - **冰冻 (freeze) / 中毒 (poison) / 眩晕 (stun) 存在性**：敌方单位技能数据中仍正确携带 `isFreeze` / `isPoison` / `isStun` 标记（玩家不可施放，由敌方持有），确保这三项效果未被意外移除。
+  - **易伤术 (vuln)**：玩家（莫甘娜·技能槽[1]）施放后敌方 `vulnTurns=2`；连续两回合边界递减至 0（被易伤单位受到伤害提升 50%，由 `damageUnit` 的 `target.vulnTurns>0 → ×1.5` 修正）；改用名称稳定追踪敌方 安娜，避免多敌方移动介入污染断言。
+- **验证**：`node test/status-effects.test.js` → 通过 16/失败 0（原 13/0 + 易伤术 S6 新增 3 条断言）；与 `smoke-test`(19/0) / `balance-scan`(梯度健康·退出码0) / `perf-check`(8/0) 一并构成零网络回归套件全绿；`node --check game.js` 与 `dist/game.js` SYNTAX_OK、`diff` 一致。
+
+### 9.16 成就系统（Achievements / Direction 3 系统新创 · @A31）
+
+> 归属于设计文档 §2.5 方向3「系统新创」——在 @A22(战力评估) 之后为方向3 补齐第二个自主新子系统「成就系统」，以纯数据驱动方式记录玩家里程碑，零侵入战斗/伤害/状态/胜负结算路径。
+
+- **成就表（数据驱动）**：`ACHIEVEMENTS` 常量定义 6 项成就，每项含 `id / name / desc`：
+  - `first_win` 初战告捷 — 取得第一场战斗胜利
+  - `flawless` 全身而退 — 一场战斗结束时我方 3 名单位全部存活
+  - `taunter` 坚壁清野 — 使用嘲讽术（坦克引流）取得一场胜利
+  - `boss_slayer` 弑王 — 在战役中击败 Boss（大魔导师·马尔佐斯）
+  - `campaign_clear` 征服者 — 通关全部 6 关战役
+  - `streak3` 三连胜 — 连续取得 3 场胜利
+- **持久化**：`saveData` 扩展 `achievements: []` 与 `winStreak: 0`，复用既有 `saveSave()` / `loadSave()` / `localStorage` 机制跨对局保留；`sanitizeSave()` 在加载时过滤非法的成就 id（仅保留 `ACHIEVEMENTS` 中存在的 id）并钳制 `winStreak` 为非负整数，防损坏/篡改存档导致异常显示。
+- **战斗运行时追踪器**（均在 `startBattle` 重置）：
+  - `battleScored` — 防止 `checkGameEnd` 对同一场战斗重复计分（胜利/失败分支各仅触发一次）。
+  - `battleTauntUsed` — 本场玩家是否施放过嘲讽术（在 `applySkill` 的 `isTaunt` 分支、且 `attacker.team === 'player'` 时置 `true`）。
+  - `battleHadBoss` — 本场敌方是否含 Boss 单位（`startBattle` 中由 `setup.enemies.some(r => r.src === 'boss')` 判定，第 6 关战役为真）。
+- **解锁逻辑**：在 `checkGameEnd` 的**胜利分支**（`enemyAlive === 0` 且 `!battleScored` 守卫内），按顺序解锁：
+  - `first_win`（首胜）→ 计算我方存活单位 `pAlive`，若 `pAlive.length === 3` 解锁 `flawless` → 若 `battleHadBoss` 解锁 `boss_slayer` → 若 `battleTauntUsed` 解锁 `taunter` → 若 `gameMode === 'campaign' && currentCampaignLevel === CAMPAIGN.length` 解锁 `campaign_clear`；
+  - `saveData.winStreak` 自增 1，若 `≥ 3` 解锁 `streak3`；随后 `saveSave()`。
+  - **失败分支**：`saveData.winStreak = 0`（连胜中断）。
+- **解锁反馈与 UI**：`unlockAchievement(id)` 在 `saveData.achievements` 去重后写入、调用 `saveSave()`、在战斗日志弹出 `🏆 解锁成就「名称」：描述`（`addLog` `info` 级），并刷新主菜单面板；`renderAchievements()` 渲染 `#menu-achievements` 容器——顶部显示 `成就 N/总数`，逐行列出每项（已解锁 🏆 金色 `.ach-row.unlocked`、未解锁 🔒 灰色 `.ach-row.locked`）。`showMenu()` 在显示菜单前调用 `renderAchievements()` 保证最新进度可见。
+- **可测性**：`saveData.achievements` 经 `_state()` 只读钩子暴露（与 `wins`/`losses`/`winStreak` 同处 `saveData`），方向5 纯 Node 测试可确定性断言解锁结果。
+- **设计定位**：成就系统是与「战役进度 / 难度选择 / 战力评估」并列的方向3 子系统，填补方向3 自 @A22 后长期空缺；它**不新增任何战斗机制**，仅在既有 `checkGameEnd` 胜负分支附加解锁钩子，由 `battleScored` 守卫保证每场战斗仅计分一次，对战斗平衡零影响。
+- **验证**：`node --check game.js` 与 `dist/game.js` → SYNTAX_OK；`node test/smoke-test.js` → 19/0（S3/S4 全量对局驱动胜利分支解锁逻辑）；`node test/status-effects.test.js` → 16/0；`node test/balance-scan.js` → 退出码 0（梯度 6/6/0 单调·全程对局覆盖解锁路径，无运行时错误）；`node test/perf-check.js` → 8/0；全零网络零依赖。
+
+### 9.17 圣光玩家阵营（Light Squad / Direction 2 内容扩建 · @A32）
+
+> 归属于设计文档 §2.5 方向2「内容扩建」——将既有第 4 阵营「圣光（light）」从纯敌方身份升级为**玩家可选出场阵营**，提供与「经典（三阵营混编）」小队并列的第二套可操控阵容，带来全新技能体验与作战风格。
+
+- **背景**：`light` 阵营此前仅以敌方身份出现于 `ENEMY_UNITS`（见 §9.5，AI 风格 `support` 守护/治疗向）。本交付将其提升为玩家可选单位，**不是 clone+rename**（圣光单位此前从未作为玩家单位存在），而是既有阵营的内容复用 + 出场机制扩容。
+- **数据定义**：新增 `LIGHT_SQUAD`（3 人小队），全部沿用既有技能，无新增任何机制：
+  - 圣光祭司·塞拉 — HP 72 / 移 2 / 技能 `heal`·`smite`·`fear`（方向驱动轮次以恐惧术替换原冰霜箭，详见 §9.18）
+  - 圣堂守卫·加百列 — HP 88 / 移 2 / 技能 `fireball`·`heal`·`stun`
+  - 曙光射手·奥菲 — HP 64 / 移 3 / 技能 `lightning`·`smite`·`meteor`
+  - 与既有 `PLAYER_UNITS`（经典三阵营混编）并列，统一收入 `PLAYER_SQUADS = { classic, light }` 映射；新增模块态 `selectedPlayerFaction`（默认 `'classic'`，与历史版本及既有测试完全兼容）。
+- **核心逻辑变更（方向2 必带逻辑改动）**：`startBattle` 由原先硬编码 `PLAYER_UNITS` 改为 `const squad = PLAYER_SQUADS[selectedPlayerFaction] || PLAYER_UNITS` 部署当前所选小队（左侧 gx=1，行 1/3/5），使阵营选择真正影响对局；新增 `setPlayerFaction(f)`（已暴露至 `Game.setPlayerFaction`）切换阵营、刷新 `#menu-faction` 文本与 `.faction-btn/.active` 高亮。
+- **UI**：主菜单新增「出场阵营」分区——`#menu-faction` 当前阵营标签 + 两个 `.faction-btn`（`faction-classic` / `faction-light`），分别 `onclick="Game.setPlayerFaction('classic'|'light')"`；CSS 复用 `.diff-btn` 同款 `.active` 高亮范式，默认 `classic` 处于 `active`。
+- **回归安全**：默认 `'classic'`，`startCampaign` / 测试套件（smoke / status-effects / balance-scan）使用的固定混编小队与既有单位槽位布局**完全不变**，全测试保持绿色；圣光队仅当用户主动点击时启用。
+- **设计定位**：属方向2 内容扩建——提供第二套可玩阵容（玩家视角看是「新单位/新技能组合的内容」），同时必须伴随 `startBattle` 部署逻辑改动，符合方向2「每次推进必带核心逻辑改动」的纪律。
+- **验证**：`node --check game.js` 与 `dist/game.js` → SYNTAX_OK；`node test/smoke-test.js` → 19/0；`node test/status-effects.test.js` → 16/0；`node test/balance-scan.js` → 退出码 0（梯度与既有一致）；`node test/perf-check.js` → 8/0；全零网络零依赖。
+
+### 9.18 恐惧术（Fear / Direction 1 核心玩法 · @A33）
+
+> 归属于设计文档 §2.5 方向1「核心玩法」——在已有「限制行动（眩晕/冰冻）+ 削弱输出（致盲）+ 战前减伤（护盾）+ 禁止施法（沉默）+ 集火放大器（易伤）+ 威胁转移（嘲讽）」六维基础上，补齐「强制位移」这一正交的移动控制维度：冰冻=禁移、嘲讽=强制靠近，恐惧=强制远离（恐慌撤退），三者共同构成完整的「移动控制」三轴。
+
+- **技能定义**：`恐惧术 (fear)` — 范围 3 格，使敌方目标恐惧 2 回合，期间其**被迫远离施法者移动（恐慌撤退），无法主动接近**，CD 2 回合。`isFear: true, fearTurns: 2`。
+- **机制**：
+  - 施放目标：**敌方**，在 `handleSelectTarget` 中校验 `target.team !== selectedUnit.team`（与 stun/blind/taunt 同校验路径）。
+  - `applySkill` 分支：将目标 `fearTurns` 设为 `max(existing, skill.fearTurns)`（不叠加超出上限），弹出「恐惧」status 飘字，写日志「目标陷入恐惧（剩余 N 回合·被迫远离你移动）」。
+  - **恐慌撤退（敌方 AI 强制位移）**：在 `aiDecide` 移动阶段，若敌方单位 `fearTurns > 0`（且未被嘲讽牵引），则计算**远离最近玩家单位**的方向并移动（与冰冻「禁移」/嘲讽「强制靠近」正交）——被恐惧单位既不攻击也不治疗，纯撤退，把战线推离施法者，为玩家创造安全的集火/重组窗口。
+  - **回合边界结算**：`nextTurn` 中对 `fearTurns > 0` 的单位递减，归零时记录日志「恐惧解除，恢复行动」。
+- **视觉反馈**：以**紫色虚线环（#ba68c8）**环绕被恐惧单位（区别于其他状态的文字标记，避免位置冲突）；`updateUI` 状态面板显示「😱 恐惧中(N回合·被迫远离你移动)」。`floaters` 队列已含「恐惧」status 飘字（§8.3 飘字反馈）。
+- **AI 交互**：`sortedAttackSkills` 排除 `isFear`（恐惧是 debuff，敌方 AI 不误放）；`evaluateSideScore` 给 `isFear` 战术价值 `+14`（与致盲/易伤同级，因其强制拉开敌我距离、降低敌方火力威胁）。
+- **设计定位**：恐惧是与**冰冻（禁移）/嘲讽（强制靠近）**正交的「移动控制」第三轴——它不剥夺目标的攻击/施法能力，而是改变其移动方向（强制远离施法者），专用于「把高威胁敌方的火力推离我方脆皮、拉开战线、制造集火窗口」。由圣光祭司·塞拉（玩家可选圣光阵营）持有，替换原冰霜箭；与圣光阵营的治愈/圣光打击构成「续航 + 控场」的作战风格。
+- **验证**：`node --check game.js` 与 `dist/game.js` → SYNTAX_OK；`node test/smoke-test.js` → 19/0；`node test/status-effects.test.js` → 16/0；`node test/balance-scan.js` → 退出码 0（梯度 6/6/0 单调·遭遇 100/90/17% 健康）；`node test/perf-check.js` → 8/0；全零网络零依赖；默认 classic 下经典小队与既有测试零回归（恐惧宿主在圣光阵营，测试默认 classic 不触达）。
 

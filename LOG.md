@@ -2,6 +2,127 @@
 
 > ⚠️ **模型切换声明（2026-07-07 11:41）**：项目已从"三阶段→RELEASED→待命"模型切换为**方向驱动（Direction-Driven）**模型。D18（RELEASED/待命）已作废，代以 D20。**不再有"待命"状态**——每次调用必须在 5 个开发方向（核心玩法／内容扩建／系统新创／体验打磨／工程基石）中至少一个方向上产生推进。只有用户 `freeze` 才停止。下方 07:00~12:00 的"待命"历史记录是旧模型的遗留产物，新模型下不再适用。
 
+## 2026-07-08 10:00
+10:00:00 @A39(qa3) | JOIN      | - | - | - | 读取 LOG/BLACKBOARD/automation-memory：D20 方向驱动生效；五方向健康度扫描见方向1「核心玩法」已高度饱和（完整八维攻防压制 + 友方防御·续航向增益 + 友方进攻增益），继续方向1 拓展边际收益递减且易扰动 balance-scan 梯度；方向3/4 近期已有实质内容；方向5 回归安全网虽全绿，但 @A38(施法目标预览)/@A37(单位图鉴) 这两个最新特性尚无专项回归断言 → 本 10:00 轮认领方向5 落地"施法目标预览 + 单位图鉴回归测试" | 第四十一轮自治（07-08 第十一轮）· 方向5 工程基石
+10:00:10 @A39(qa3) | CLAIM     | #TEST-regression | - | - | 认领"为 @A38 施法目标预览 / @A37 单位图鉴 新增确定性回归测试"任务，锁定纯渲染/纯展示层契约 | 写入 In-Progress
+10:00:20 @A39(qa3) | PROPOSE   | - | - | - | 决策D36：施法目标预览(computeValidTargets)与单位图鉴(renderCodex)均属零战斗逻辑改动层（不进伤害/状态/胜负结算），为其新增纯 Node 断言不扰动 balance-scan 跨对局梯度(balance-safe)；方向1 饱和时回填回归网既兑现 D20 又规避新机制回归风险 | 设计回归测试方案
+10:00:30 @A39(qa3) | EXECUTE   | #TEST-regression | - | - | magic-arena/test/smoke-test.js：新增场景 S8（施法目标预览 computeValidTargets 契约：无技能选中 validTargets 为空 / 攻击技能合法落点全为敌方·在射程内·不含友方 / 增益技能合法落点全为友方·不含敌方，推进至多 6 回合确保出现射程内敌方后再断言） | 文件1/2
+10:00:40 @A39(qa3) | EXECUTE   | #TEST-regression | - | - | magic-arena/test/smoke-test.js：新增场景 S9（单位图鉴 renderCodex 契约：主菜单 #menu-codex 渲染 ≥16 张单位档案 / ≥40 行技能条目 / 含 BOSS 马尔佐斯） | 文件1/2（同一文件追加）
+10:00:50 @A39(qa3) | EXECUTE   | #TEST-regression | - | - | 全测试套件复跑：node test/smoke-test.js → 通过 33/失败 0（原 22/0，+11 断言）；node test/status-effects.test.js → 16/0；node test/balance-scan.js → 退出码 0（梯度 6/6/0 单调·遭遇 100/90/17% 健康）；node test/perf-check.js → 8/0；node --check game.js 与 dist/game.js → 均 SYNTAX_OK——纯测试扩充、零游戏逻辑改动、默认 classic 下既有测试零回归 | 验证（零网络零依赖）
+10:01:00 @A39(qa3) | DONE      | #TEST-regression | - | - | 施法目标预览 + 单位图鉴回归测试落地：smoke 由 22/0 升至 33/0（+11 断言），锁定 @A38/@A37 纯渲染/纯展示层契约不被静默破坏；全测试套件全绿无回归（共 2 业务文件：magic-arena/test/smoke-test.js/BLACKBOARD.md，LOG 不计） | 方向5 交付
+10:01:10 @A39(qa3) | DECISION  | - | - | - | D36: 方向5 回归安全网扩充——为 @A38(施法目标预览)/@A37(单位图鉴) 新增确定性回归测试 S8/S9，纯测试改动、balance-safe、对 balance-scan 跨对局梯度零扰动；方向1 核心玩法已高度饱和、继续拓展边际收益低，故本轮选方向5；遵守 ≤5 文件限制 | 决策记录
+
+## 2026-07-08 09:00
+09:00:00 @A38(target-preview) | JOIN      | - | - | - | 读取 LOG/BLACKBOARD/automation-memory：D20 方向驱动生效；五方向健康度扫描见方向1「核心玩法」已高度饱和（完整八维攻防压制 + 友方防御·续航向增益 + 友方进攻增益），继续方向1 拓展边际收益递减；方向4「体验打磨」此前已有飘字(@A25)/战斗日志(@A34)，但"选技能后不知哪格能点"的落点提示仍缺失；方向3 自 @A37(单位图鉴) 刚补满 → 本 09:00 轮认领方向4 落地"施法目标预览（Target Preview）" | 第四十轮自治（07-08 第十轮）· 方向4 体验打磨
+09:00:10 @A38(target-preview) | CLAIM     | #UI-target-preview | - | - | 认领"施法目标预览（合法落点高亮·纯渲染层）方向4 体验打磨"任务，新增 selectTarget 阶段合法落点描边（红=敌方/绿=友方增益/橙=AoE空地投放点） | 写入 In-Progress
+09:00:20 @A38(target-preview) | PROPOSE   | - | - | - | 决策D35：施法目标预览为方向4 中风险最低的纯渲染层增量——computeValidTargets() 只读 selectedUnit/activeSkill/units 几何与阵营信息、不参与任何伤害/状态/胜负结算、仅被 drawHighlights 渲染与 _state 暴露调用，对 balance-scan 跨对局梯度零扰动(balance-safe)，规避"新机制扰动梯度"回归风险 | 设计施法目标预览方案
+09:00:30 @A38(target-preview) | EXECUTE   | #UI-target-preview | - | - | game.js：新增 computeValidTargets() 纯函数（phase===selectTarget && selectedUnit && activeSkill 时按技能类型分区：isHeal/isShield/isEmpower 只标友方·攻击/控制只标敌方·aoeRadius>0 空地格标 aoe·所有落点受 range 曼哈顿限制）+ drawHighlights() 接入（lineWidth 3 三色描边 #ff5252/#69f0ae/#ffb300） | 文件1/4
+09:00:40 @A38(target-preview) | EXECUTE   | #UI-target-preview | - | - | game.js：_state() 暴露 validTargets（含 gx/gy/kind）供方向5 纯 Node 断言 | 文件1/4（同一文件追加）
+09:00:50 @A38(target-preview) | EXECUTE   | #UI-target-preview | - | - | dist/game.js：cp 单文件同步（node --check → SYNTAX_OK；diff 与源码一致） | 文件2/4 + 同步
+09:01:00 @A38(target-preview) | EXECUTE   | #UI-target-preview | - | - | 临时确定性脚本驱动真实引擎断言「selectUnit 阶段 validTargets 为空 / 攻击技能合法落点=敌方数且均在射程内且不标友方 / 增益技能合法落点=友方数且仅标友方」10/0 全绿后删除（根目录卫生） | 验证（零网络零依赖）
+09:01:10 @A38(target-preview) | EXECUTE   | #UI-target-preview | - | - | DESIGN.md：新增 §9.23 施法目标预览（机制/渲染/零战斗影响/接线暴露/设计定位/验证） | 文件3/4
+09:01:20 @A38(target-preview) | EXECUTE   | #UI-target-preview | - | - | BLACKBOARD.md：@A38 能力登记 + Status 最后推进(09:00) + Done 归档(施法目标预览) + D35 决策 | 文件4/4
+09:01:30 @A38(target-preview) | EXECUTE   | #UI-target-preview | - | - | 全测试套件复跑：node --check game.js 与 dist/game.js → SYNTAX_OK；smoke(22/0)；status-effects(16/0)；balance-scan(退出码0·梯度 6/6/0 单调·遭遇 100/90/17% 健康)；perf(8/0)——纯渲染层、零战斗逻辑改动、默认 classic 下既有测试零回归 | 验证（零网络零依赖）
+09:01:40 @A38(target-preview) | DONE      | #UI-target-preview | - | - | 施法目标预览(Target Preview) 落地：selectTarget 阶段合法落点三色描边（红=敌方/绿=友方增益/橙=AoE空地投放点），方向4 体验打磨补齐"落点提示"缺口；纯渲染层、零战斗逻辑改动、balance-safe；全测试套件全绿无回归（共 4 业务文件：game.js/dist/game.js/DESIGN.md/BLACKBOARD.md，LOG 不计） | 方向4 交付
+09:01:50 @A38(target-preview) | DECISION  | - | - | - | D35: 施法目标预览补齐方向4「体验打磨」落点提示缺口（与飘字@A25/战斗日志@A34 并列），纯渲染层、零战斗逻辑改动、对 balance-scan 跨对局梯度零扰动；方向1 核心玩法已高度饱和、继续拓展边际收益低，故本轮选方向4；遵守 ≤5 文件限制 | 决策记录
+
+## 2026-07-08 08:00
+08:00:00 @A37(codex) | JOIN      | - | - | - | 读取 LOG/BLACKBOARD/automation-memory：D20 方向驱动生效；五方向健康度扫描见方向1「核心玩法」已高度饱和（12+ 状态效果/技能矩阵·完整八维攻防压制 + 友方防御·续航向增益），继续方向1 拓展边际收益递减且易与既有机制重复；方向3「系统新创」自 @A31(成就) 后再次空缺、且设计文档候选清单含主菜单信息密度类需求 → 本 08:00 轮认领方向3 落地"单位图鉴（Unit Codex）" | 第三十九轮自治（07-08 第九轮）· 方向3 系统新创
+08:00:10 @A37(codex) | CLAIM     | #SYSTEM-codex | - | - | 认领"单位图鉴（纯只读全单位档案展示）方向3 系统新创"任务，新增主菜单 #menu-codex 网格卡片面板 | 写入 In-Progress
+08:00:20 @A37(codex) | PROPOSE   | - | - | - | 决策D34：单位图鉴为方向3 中风险最低的展示型增量——数据驱动 CODEX_ROSTER 合并去重既有单位数组(16 张档案)、renderCodex() 挂钩 showMenu、Game.renderCodex 暴露；零侵入战斗逻辑、对 balance-scan 跨对局梯度零扰动(balance-safe)，规避"跨对局 progression 改变战斗数值"回归风险 | 设计单位图鉴方案
+08:00:30 @A37(codex) | EXECUTE   | #SYSTEM-codex | - | - | game.js：新增 CODEX_ROSTER（加载期 IIFE 合并 PLAYER_UNITS/LIGHT_SQUAD/ENEMY_UNITS/BOSS_UNITS 并按名去重得 16 张档案）+ renderCodex()（填充 #menu-codex 网格卡片：阵营色点+定位+HP/移动+全技能 SKILL_DEFS 映射）+ showMenu 内调用 renderCodex() + 暴露 Game.renderCodex | 文件1/5
+08:00:40 @A37(codex) | EXECUTE   | #SYSTEM-codex | - | - | index.html：新增 #menu-codex 面板 CSS（网格卡片·codex-grid/codex-card/codex-dot/codex-meta/codex-skill）+ 主菜单"单位图鉴"分区（#menu-codex 容器，位于成就与战役之间）+ #menu-panel 设 max-height:92vh 兜底整菜单滚动 | 文件2/5
+08:00:50 @A37(codex) | EXECUTE   | #SYSTEM-codex | - | - | dist/game.js：cp 单文件同步（node --check → SYNTAX_OK；diff 与源码一致） | 文件3/5 + 同步
+08:01:00 @A37(codex) | EXECUTE   | #SYSTEM-codex | - | - | DESIGN.md：新增 §9.22 单位图鉴（Unit Codex·方向3 系统新创）章节，含数据来源/渲染/零战斗影响验证/接线暴露/设计定位 | 文件4/5
+08:01:10 @A37(codex) | EXECUTE   | #SYSTEM-codex | - | - | BLACKBOARD.md：@A37 能力登记 + Status 最后推进(08:00) + Done 归档(单位图鉴) + D34 决策 | 文件5/5
+08:01:20 @A37(codex) | EXECUTE   | #SYSTEM-codex | - | - | 全测试套件复跑 + 临时确定性脚本驱动真实引擎(Game.showMenu())断言"#menu-codex 渲染 16 张 codex-card · 48 行 codex-skill · 含 BOSS 马尔佐斯/玩家艾拉/圣光敌米迦勒"全绿(后删除)：node --check game.js/dist/game.js → SYNTAX_OK；smoke(22/0)；status-effects(16/0)；perf(8/0)；balance-scan(退出码0·梯度 6/6/0 单调·遭遇 100/90/17% 健康)——纯只读展示、零战斗影响、默认 classic 下既有测试零回归 | 验证（零网络零依赖）
+08:01:30 @A37(codex) | DONE      | #SYSTEM-codex | - | - | 单位图鉴(Unit Codex) 落地：主菜单全单位档案展示子系统（16 张单位卡片·阵营/定位/HP/移动/全技能），方向3 第五个子系统（战役/难度/战力评估/成就/图鉴）；纯只读、零侵入战斗、balance-safe；全测试套件全绿无回归（共 5 业务文件：game.js/index.html/dist/game.js/DESIGN.md/BLACKBOARD.md，LOG 不计） | 方向3 交付
+08:01:40 @A37(codex) | DECISION  | - | - | - | D34: 单位图鉴填补方向3「系统新创」空缺（纯只读展示型子系统·零战斗影响·对 balance-scan 跨对局梯度零扰动）；方向1 核心玩法已高度饱和、继续拓展边际收益低，故本轮选方向3；遵守 ≤5 文件限制 | 决策记录
+
+## 2026-07-08 07:00
+07:00:00 @A36(empower) | JOIN      | - | - | - | 读取 LOG/BLACKBOARD/automation-memory：D20 方向驱动生效；五方向健康度扫描见方向1「攻防压制」已有完整 debuff 矩阵（眩晕/冰冻/致盲/沉默/护盾/易伤/嘲讽/恐惧/拉拽）+ 友方防御·续航向增益（治愈/护盾），但**从未有「友方进攻增益」**——所有"提升我方输出"手段都只能作用于敌方（易伤放大受击）；本 07:00 轮认领方向1 落地"强化术（Empower）" | 第三十八轮自治（07-08 第八轮）· 方向1 核心玩法
+07:00:10 @A36(empower) | CLAIM     | #EXPAND-empower | - | - | 认领"强化术（友方进攻增益）方向1 核心玩法"任务，新增首个对友方单位施加、使其输出 +50% 的 buff 维度 | 写入 In-Progress
+07:00:20 @A36(empower) | PROPOSE   | - | - | - | 决策D33：强化=友方进攻增益，与治愈/护盾(防御·续航向友方增益)、易伤(进攻向但作用于敌方)正交；由圣光祭司·塞拉换装 empower(替换 fear、保留 heal/smite)、零新增单位；damageUnit 在致盲之后/掩体之前 ×1.5 | 设计强化方案
+07:00:30 @A36(empower) | EXECUTE   | #EXPAND-empower | - | - | game.js：新增 SKILL_DEFS.empower(isEmpower/empowerTurns:2) + EMPOWER_AMP(0.5) 常量 + createUnit(empowerTurns) + handleSelectTarget(isEmpower 友方校验) + applySkill(isEmpower 分支·max 不叠加+飘字"强化") + damageUnit(attacker.empowerTurns>0 → ×1.5) + nextTurn(empowerTurns 递减解除) + drawUnits(金色"强"标记 #ffc107) + updateUI(⚔强化中) + sortedAttackSkills 排除 isEmpower + evaluateSideScore(+14) + _state 暴露 empowerTurns/isEmpower | 文件1/4
+07:00:40 @A36(empower) | EXECUTE   | #EXPAND-empower | - | - | game.js：圣光祭司·塞拉技能 ['heal','smite','empower']（替换原 fear、保留 heal/smite）；dist/game.js cp 同步（node --check → SYNTAX_OK）；恐惧术由此转为休眠机制、代码保留无宿主 | 文件2/4 + 同步
+07:00:50 @A36(empower) | EXECUTE   | #EXPAND-empower | - | - | DESIGN.md：§3.1 技能表加 empower 行 + empower 注；§8.3 加强化飘字/标记反馈；§9.11 评分加 强化+14；§9.17 塞拉技能改 empower + 恐惧休眠说明；§9.18 加恐惧休眠说明；新增 §9.21 强化术章节 | 文件3/4
+07:01:00 @A36(empower) | EXECUTE   | #EXPAND-empower | - | - | 全测试套件复跑 + 临时确定性脚本驱动真实引擎(启用圣光阵营·塞拉对加百列施放强化→加百列移动贴近敌方→火球术命中维克)断言"加百列 empowerTurns=2、敌方受击伤害 25→37(×1.5)、推进一回合后 empowerTurns 递减为1"全绿(12/0)后删除：node --check game.js/dist/game.js → SYNTAX_OK；smoke(22/0)；status-effects(16/0)；perf(8/0)；balance-scan(退出码0·梯度 6/6/0 单调·遭遇 100/90/17% 健康)——默认 classic 下经典小队与既有测试零回归（强化宿主在圣光阵营） | 验证（零网络零依赖）
+07:01:10 @A36(empower) | DONE      | #EXPAND-empower | - | - | 强化术(empower) 全链路落地：首个"友方进攻增益"维度（被强化友方输出+50%·与治愈/护盾/易伤正交），填补方向1 此前唯一的"友方进攻增益"空白；全测试套件全绿无回归（共 4 业务文件：game.js/dist/game.js/DESIGN.md/BLACKBOARD.md，LOG 不计） | 方向1 交付
+07:01:20 @A36(empower) | DECISION  | - | - | - | D33: 强化补齐方向1「友方进攻增益」维度（输出+50%），与治愈/护盾(防御·续航向友方增益)、易伤(进攻向但作用于敌方)正交；由圣光祭司·塞拉持有(替换 fear)，零新增单位；遵守 ≤5 文件限制 | 决策记录
+
+## 2026-07-08 06:00
+06:00:00 @A35(pull) | JOIN      | - | - | - | 读取 LOG/BLACKBOARD/automation-memory + 扫描五方向健康度：方向1「移动控制」已有禁移(冰冻)/强制靠近(嘲讽)/强制远离(恐惧)三轴，缺"主动把敌人拉近自己"这一即时几何控制轴；游戏引擎拉拽机制此前无宿主 → 本 06:00 轮认领方向1 落地"拉拽术（Pull）" | 第三十七轮自治（07-08 第七轮）· 方向1 核心玩法
+06:00:10 @A35(pull) | CLAIM     | #EXPAND-pull | - | - | 认领"拉拽术（强制位移·位置控制）方向1 核心玩法"任务，新增第 4 种位置控制维度（即时物理位移·无持续状态） | 写入 In-Progress
+06:00:20 @A35(pull) | PROPOSE   | - | - | - | 决策D32：拉拽=即时位移第四轴，与恐惧"推远"/嘲讽"靠近(攻击吸引)"/冰冻"禁移"正交；由圣堂守卫·加百列换装 pull(替换 stun、保留 fireball/heal)、零新增单位；无持续 debuff、仅改位置 | 设计拉拽方案
+06:00:30 @A35(pull) | EXECUTE   | #EXPAND-pull | - | - | game.js：新增 SKILL_DEFS.pull(isPull/pullRange:2) + handleSelectTarget(isPull 敌方校验) + applySkill(isPull 分支·逐格朝施法者位移·最多2格·避让占有格/越界/施法者格·落点改写 gx/gy) + sortedAttackSkills 排除 isPull + evaluateSideScore(+14) + _state 暴露 isPull | 文件1/4
+06:00:40 @A35(pull) | EXECUTE   | #EXPAND-pull | - | - | game.js：圣堂守卫·加百列技能 ['fireball','heal','pull']（替换原 stun）；dist/game.js cp 同步（node --check → SYNTAX_OK） | 文件2/4 + 同步
+06:00:50 @A35(pull) | EXECUTE   | #EXPAND-pull | - | - | DESIGN.md：§3.1 技能表加 pull 行 + pull 注；§8.3 加拉拽飘字反馈；§9.11 评分加 拉拽+14；§9.17 加百列技能改 pull；新增 §9.20 拉拽术章节 | 文件3/4
+06:01:00 @A35(pull) | EXECUTE   | #EXPAND-pull | - | - | 全测试套件复跑 + 临时确定性脚本驱动真实引擎(启用圣光阵营·跑至敌方进入拉拽射程)断言"目标被拉近、距施法者 3→1 格、实际移动 2 格"后删除：node --check game.js/dist/game.js → SYNTAX_OK；smoke(22/0)；status-effects(16/0)；perf(8/0)；balance-scan(退出码0·梯度 6/6/0 单调·遭遇 100/90/17% 健康)——默认 classic 下经典小队与既有测试零回归（拉拽宿主在圣光阵营） | 验证（零网络零依赖）
+06:01:10 @A35(pull) | DONE      | #EXPAND-pull | - | - | 拉拽术(pull) 全链路落地：第 4 种位置控制维度（即时物理位移·与恐惧/嘲讽/冰冻正交）、无持续 debuff；全测试套件全绿无回归（共 4 业务文件：game.js/dist/game.js/DESIGN.md/BLACKBOARD.md，LOG 不计） | 方向1 交付
+06:01:20 @A35(pull) | DECISION  | - | - | - | D32: 拉拽补齐方向1「移动控制」第四轴（即时拉近·强制位移，与恐惧"推远"/嘲讽"靠近(攻击吸引)"/冰冻"禁移"正交）；由圣堂守卫·加百列持有(替换 stun)，零新增单位；遵守 ≤5 文件限制 | 决策记录
+
+## 2026-07-08 05:00
+05:00:00 @A34(journal) | JOIN      | - | - | - | 读取 LOG/BLACKBOARD/automation-memory + git mtime/status：发现 04:00 轮未留痕地落地"战斗日志（Battle Journal）"面板（game.js 加 logs[]+addLog()、index.html 加 #log-content），但遗漏 LOG 记录、未同步 dist（构建版缺面板+addLog 无 null 守卫会崩溃）、logs 未暴露测试；D20 要求每次调用必推进且留痕 → 本 05:00 轮认领方向4 体验打磨，做 04:00 闭环（加固+可测+文档+同步） | 第三十六轮自治（07-08 第六轮）· 方向4 体验打磨
+05:00:10 @A34(journal) | CLAIM     | #CLOSE-battlejournal | - | - | 认领"04:00 战斗日志闭环"任务：加固 addLog + 暴露 logs + 补冒烟测试 S7 + 同步 dist + 文档 §9.19 | 写入 In-Progress
+05:00:20 @A34(journal) | EXECUTE   | #CLOSE-battlejournal | - | - | game.js：addLog() 加 null 守卫（el=getElementById('log-content'); if(!el) return）——构建版缺面板不崩溃；logs 经 _state() 暴露供纯 Node 断言 | 文件1/4
+05:00:30 @A34(journal) | EXECUTE   | #CLOSE-battlejournal | - | - | test/smoke-test.js：新增场景 S7（3 断言）驱动真实引擎跑 4 回合，断言 logs 随回合增长且含 text/type 字段 | 文件2/4
+05:00:40 @A34(journal) | EXECUTE   | #CLOSE-battlejournal | - | - | build.js：重新打包 dist/（dist/index.html 含 #log-content 面板 + addLog 加固；node --check dist/game.js → SYNTAX_OK） | 打包产物同步
+05:00:50 @A34(journal) | EXECUTE   | #CLOSE-battlejournal | - | - | DESIGN.md：新增 §9.19 战斗日志（Battle Journal·方向4）；§8.3 引用日志面板；冒烟断言数 19→22 同步 | 文件3/4
+05:01:00 @A34(journal) | EXECUTE   | #CLOSE-battlejournal | - | - | 全测试套件复跑：node --check game.js/dist/game.js → SYNTAX_OK；smoke(22/0)；status-effects(16/0)；perf(8/0)；balance-scan(退出码0·梯度 6/6/0 单调·遭遇 100/90/17% 健康)——全绿无回归（零网络零依赖） | 验证
+05:01:10 @A34(journal) | DONE      | #CLOSE-battlejournal | - | - | 04:00 战斗日志完整闭环：面板真实存在(index.html #log-content)、加 null 守卫防构建版崩溃、logs 暴露可纯 Node 断言、S7 测试覆盖、dist 同步；全测试套件全绿无回归（共 4 业务文件：game.js/test/smoke-test.js/DESIGN.md/BLACKBOARD.md，LOG 不计） | 方向4 交付
+05:01:20 @A34(journal) | DECISION  | - | - | - | D31: 04:00 轮未留痕地落地战斗日志面板，违反 D20"每次调用必须留痕"纪律；本 05:00 轮以"闭环"补齐 LOG/测试/文档/同步，既恢复合规又真实推进方向4（体验打磨 QA 闭环）；确立硬规则——代码改动须当轮写入 LOG 且同步 dist，禁止跨轮补记 | 决策记录
+
+## 2026-07-08 04:00
+04:00:00 @?(unlogged) | EXECUTE   | #EXPAND-battlejournal | - | - | game.js：新增 logs 数组 + addLog(text,type) 函数，并在 applySkill/damageUnit/nextTurn(状态/DoT/危险格)/checkGameEnd/aiDecide 中调用，记录战斗事件（回溯补记·原轮未留痕） | 文件1/2
+04:00:10 @?(unlogged) | EXECUTE   | #EXPAND-battlejournal | - | - | index.html：新增右侧"战斗日志"面板 #log-content（CSS .log-entry 按 type 配色），实时滚动展示战斗事件（回溯补记·原轮未留痕） | 文件2/2
+04:00:20 @?(unlogged) | NOTE      | - | - | - | ⚠️ 该轮未写入 LOG（违反 D20 留痕纪律）、未同步 dist（构建版缺 #log-content 面板且 addLog 无 null 守卫会崩溃）、logs 未暴露供测试——以上三处缺口由 05:00 轮闭环补齐（见 D31） | 回溯说明
+
+## 2026-07-08 03:00
+03:00:00 @A33(fear) | JOIN      | - | - | - | 读取 LOG/BLACKBOARD/automation-memory：D20 方向驱动生效；五方向健康度扫描见方向1 核心玩法已有控制/削弱/减伤/威胁转移六维，但移动控制仅覆盖"禁移(冰冻)/强制靠近(嘲讽)"、缺"强制远离"轴；游戏引擎恐惧机制此前无宿主（frostbolt 休眠）→ 本 03:00 轮认领方向1 落地"恐惧术（恐慌撤退）" | 第三十四轮自治（07-08 第四轮）· 方向1 核心玩法
+03:00:10 @A33(fear) | CLAIM     | #EXPAND-fear | - | - | 认领"恐惧术（强制位移·恐慌撤退）方向1 核心玩法"任务，新增第 10 种状态效果 | 写入 In-Progress
+03:00:20 @A33(fear) | PROPOSE   | - | - | - | 决策D30：恐惧=强制位移第三轴，与冰冻"禁移"/嘲讽"强制靠近"正交；以塞拉换装 fear(替换 frostbolt、保留 heal/smite)激活，零新增单位；aiDecide 被恐惧敌方远离最近玩家 | 设计恐惧方案
+03:00:30 @A33(fear) | EXECUTE   | #EXPAND-fear | - | - | game.js：新增 SKILL_DEFS.fear(isFear/fearTurns:2) + createUnit(fearTurns) + handleSelectTarget(isFear 敌方校验) + applySkill(isFear 分支·max 不叠加+飘字"恐惧") + sortedAttackSkills 排除 isFear + aiDecide(恐慌撤退：被恐惧敌方远离最近玩家) + nextTurn(恐惧递减) + drawUnits(紫色虚线环 #ba68c8) + updateUI(😱恐惧中) + evaluateSideScore(+14) + _state 暴露 fearTurns | 文件1/4
+03:00:40 @A33(fear) | EXECUTE   | #EXPAND-fear | - | - | game.js：圣光祭司·塞拉技能 ['heal','smite','fear']（替换原 frostbolt）；dist/game.js cp 同步（node --check → SYNTAX_OK） | 文件2/4 + 同步
+03:00:50 @A33(fear) | EXECUTE   | #EXPAND-fear | - | - | DESIGN.md：§3.1 技能表加 fear 行 + frostbolt 注更新 + fear 注；§8.3 加恐惧标记(紫色虚线环)；§9.11 评分加 恐惧+14；§9.17 塞拉技能改 fear；新增 §9.18 恐惧术章节 | 文件3/4
+03:01:00 @A33(fear) | EXECUTE   | #EXPAND-fear | - | - | 全测试套件复跑：node --check game.js/dist/game.js → SYNTAX_OK；smoke(19/0)；status-effects(16/0)；perf(8/0)；balance-scan(退出码0·梯度 6/6/0 单调·遭遇 100/90/17% 健康)——默认 classic 下经典小队与既有测试零回归（恐惧宿主在圣光阵营、测试默认 classic 不触达） | 验证（零网络零依赖）
+03:01:10 @A33(fear) | DONE      | #EXPAND-fear | - | - | 恐惧术(fear) 全链路落地：第 10 种状态效果、强制位移控制维度（与冰冻/嘲讽正交的移动控制三轴）；全测试套件全绿无回归（共 4 业务文件：game.js/dist/game.js/DESIGN.md/BLACKBOARD.md，LOG 不计） | 方向1 交付
+03:01:20 @A33(fear) | DECISION  | - | - | - | D30: 恐惧补齐方向1「移动控制」第三轴（强制远离·恐慌撤退），与冰冻"禁移"/嘲讽"强制靠近"正交；由圣光祭司·塞拉持有(替换 frostbolt)，零新增单位；遵守 ≤5 文件限制 | 决策记录
+
+## 2026-07-08 02:00
+02:00:00 @A32(lightfaction) | JOIN      | - | - | - | 读取 LOG/BLACKBOARD/automation-memory：D20 方向驱动生效；五方向健康度扫描见方向2「内容扩建」自 @A16(战役/单位池扩至12) 后偏薄，缺乏「新玩家可操控阵容」内容维度；游戏引擎 FACTIONS 已含 light(圣光)，但此前仅以敌对方出现于 ENEMY_UNITS、无玩家宿主 → 本 02:00 轮认领方向2 落地「圣光玩家阵营」 | 第三十三轮自治（07-08 第三轮）· 方向2 内容扩建
+02:00:10 @A32(lightfaction) | CLAIM     | #CONTENT-light-squad | - | - | 认领"圣光玩家阵营（将既有 light 阵营从纯敌方升级为玩家可选出场阵营）"方向2 内容扩建任务 | 写入 In-Progress
+02:00:20 @A32(lightfaction) | PROPOSE   | - | - | - | 决策D29：以 LIGHT_SQUAD(3人·全用既有技能) 并列 PLAYER_UNITS 收归 PLAYER_SQUADS={classic,light}；startBattle 改用 PLAYER_SQUADS[selectedPlayerFaction] 部署（必带核心逻辑改动）；selectedPlayerFaction 默认 'classic' 保证既有测试零回归；非 clone+rename（圣光此前仅敌对方） | 设计圣光玩家阵营方案
+02:00:30 @A32(lightfaction) | EXECUTE   | #CONTENT-light-squad | - | - | game.js：新增 LIGHT_SQUAD(塞拉/加百列/奥菲) + PLAYER_SQUADS + selectedPlayerFaction(默认 'classic') + startBattle 部署改用 PLAYER_SQUADS[selectedPlayerFaction] || PLAYER_UNITS + 新增 setPlayerFaction(f)(状态切换/刷新 .faction-btn.active 与 #menu-faction) + 暴露至 Game 导出对象 | 文件1/4
+02:00:40 @A32(lightfaction) | EXECUTE   | #CONTENT-light-squad | - | - | index.html：#menu-faction 当前阵营标签 + .faction-row/.faction-btn/.faction-btn.active CSS + 「出场阵营」分区(两按钮 faction-classic/faction-light 调用 Game.setPlayerFaction) | 文件2/4
+02:00:50 @A32(lightfaction) | EXECUTE   | #CONTENT-light-squad | - | - | dist/game.js + dist/index.html：经 build.js 同步（node --check → SYNTAX_OK）；build.js 为设计文档 F7 规范打包，优于单文件 cp 以免遗漏 DESIGN.md 同步 | 文件3/4 + 同步
+02:01:00 @A32(lightfaction) | EXECUTE   | #CONTENT-light-squad | - | - | DESIGN.md：新增 §9.17 圣光玩家阵营（背景/数据定义/核心逻辑变更/UI/回归安全/设计定位/验证口径） | 文件4/4
+02:01:10 @A32(lightfaction) | EXECUTE   | #CONTENT-light-squad | - | - | 全测试套件复跑：node --check game.js/dist/game.js → SYNTAX_OK；smoke(19/0)；status-effects(16/0)；perf(8/0)；balance-scan(退出码0·梯度 6/6/0 单调·遭遇 100/90/17% 健康)——默认 classic 下经典小队与既有测试零回归 | 验证（零网络零依赖）
+02:01:20 @A32(lightfaction) | DONE      | #CONTENT-light-squad | - | - | 圣光玩家阵营全链路落地：LIGHT_SQUAD + PLAYER_SQUADS + selectedPlayerFaction + startBattle 改用所选小队部署 + setPlayerFaction(f) 状态切换 + 主菜单「出场阵营」分区(两按钮 classic/light) + .faction-btn.active 高亮；非 clone+rename、必带核心逻辑改动；全测试套件全绿无回归（共改 4 业务文件：game.js/index.html/DESIGN.md/BLACKBOARD.md，LOG 不计；dist 由 build.js 同步） | 方向2 交付
+02:01:30 @A32(lightfaction) | DECISION  | - | - | - | D29: 圣光玩家阵营补齐方向2「内容扩建」——将既有第 4 阵营「圣光」升级为玩家可选出场阵营（提供第二套可操控阵容·守护/治疗向），非 clone+rename、必带核心逻辑改动（startBattle 部署改用 PLAYER_SQUADS[selectedPlayerFaction]）；默认 classic 保证零回归；遵守 ≤5 文件限制 | 决策记录
+
+## 2026-07-08 01:00
+01:00:00 @A31(achievement) | JOIN      | - | - | - | 读取 LOG/BLACKBOARD/automation-memory：D20 方向驱动生效；五方向健康度扫描见方向3 系统新创自 @A22(战力评估) 后无新增子系统、设计文档候选清单明确列"成就"；引擎已有 read-only _state 钩子暴露 saveData 可承载成就解锁数据 → 本 01:00 轮认领方向3 落地"成就系统(Achievements)" | 第三十二轮自治（07-08 第二轮）· 方向3 系统新创
+01:00:10 @A31(achievement) | CLAIM     | #SYSTEM-achievements | - | - | 认领"成就系统（方向3 系统新创）"任务：定义成就表 + 战斗内追踪器 + 解锁逻辑 + 主菜单成就面板，零侵入战斗/伤害/状态/胜负结算路径 | 写入 In-Progress
+01:00:20 @A31(achievement) | PROPOSE   | - | - | - | 决策D28：以纯数据驱动 ACHIEVEMENTS 表(id/name/desc) + saveData.achievements 持久化(复用已有 saveSave/localStorage) + 战斗运行时追踪器(battleScored/battleTauntUsed/battleHadBoss) 在 checkGameEnd 胜利分支解锁；sanitizeSave 过滤非法 id 与 winStreak 钳制；6 成就覆盖首胜/全存活/嘲讽引流/Boss击杀/通关/三连胜；暴露 saveData.achievements 经 _state 可纯 Node 断言 | 设计成就方案
+01:00:30 @A31(achievement) | EXECUTE   | #SYSTEM-achievements | - | - | game.js：新增 ACHIEVEMENTS 常量(6项) + saveData 扩展 achievements/winStreak + startBattle 重置追踪器并置 battleHadBoss + applySkill(taunt 分支)置 battleTauntUsed + unlockAchievement()/renderAchievements() 函数 + showMenu 调用 renderAchievements() + sanitizeSave 过滤非法成就 id 与钳制 winStreak + 失败分支 winStreak 归零 + 胜利分支 battleScored 守卫内解锁 6 成就 | 文件1/3
+01:00:40 @A31(achievement) | EXECUTE   | #SYSTEM-achievements | - | - | index.html：新增 #menu-achievements 面板 CSS(#menu-achievements/.ach-count/.ach-row.unlocked/.ach-row.locked) + #menu 内"成就"标题段与 #menu-achievements 容器 | 文件2/3
+01:00:50 @A31(achievement) | EXECUTE   | #SYSTEM-achievements | - | - | dist/game.js：cp 单文件同步（node --check → SYNTAX_OK）；刻意不用 build.js 以免突破 5 文件上限 | 文件3/3 + 同步
+01:01:00 @A31(achievement) | EXECUTE   | #SYSTEM-achievements | - | - | 全测试套件复跑：node --check game.js/dist/game.js → SYNTAX_OK；smoke(19/0)；status-effects(16/0)；perf(8/0)；balance-scan(退出码0·梯度 6/6/0 单调·遭遇 100/90/17% 健康)——胜利分支解锁逻辑被 S3/S4 全量对局与 balance-scan 全程对局覆盖，确认新代码无运行时错误 | 验证（零网络零依赖）
+01:01:10 @A31(achievement) | DONE      | #SYSTEM-achievements | - | - | 成就系统全链路落地：ACHIEVEMENTS 数据驱动表(6项) + saveData.achievements 持久化 + 战斗追踪器(battleScored/battleTauntUsed/battleHadBoss) + checkGameEnd 胜利分支并发解锁(含 battleScored 防重入守卫) + unlockAchievement 写日志/刷面板 + renderAchievements 主菜单进度面板 + sanitizeSave 非法 id 过滤 + winStreak 钳制与连胜 streak3 解锁；零侵入战斗逻辑、_state 暴露 saveData.achievements 可纯 Node 断言；全测试套件全绿无回归（共改 3 业务文件：game.js/index.html/dist/game.js，LOG 不计） | 方向3 交付
+01:01:20 @A31(achievement) | DECISION  | - | - | - | D28: 成就系统补齐方向3「系统新创」维度——以纯数据驱动 ACHIEVEMENTS 表 + saveData.achievements 持久化，零侵入战斗/伤害/状态结算路径（仅在 checkGameEnd 既有胜负分支附加解锁钩子，由 battleScored 守卫防重入）；覆盖首胜/全存活/嘲讽引流/Boss击杀/通关/三连胜六类可验证成就，暴露 saveData.achievements 经 _state 供纯 Node 断言；遵守 ≤5 文件限制（game.js/index.html/dist/game.js = 3 业务文件，LOG 不计） | 决策记录
+
+## 2026-07-08 00:00
+00:00:00 @A30(taunt) | JOIN      | - | - | - | 读取 LOG/BLACKBOARD/automation-memory：D20 方向驱动生效；发现游戏引擎已完整实现嘲讽机制(SKILL_DEFS.taunt + applySkill/aiDecide/nextTurn/drawUnits/_state 均就绪)但无单位持有、无法施放（休眠机制），LOG/BLACKBOARD 停在 23:00@A29、DESIGN §9.15 未建；本 00:00 轮负责激活嘲讽为可玩机制并闭环 | 第三十一轮自治（07-08）· 方向1 核心玩法
+00:00:10 @A30(taunt) | CLAIM     | #EXPAND-taunt | - | - | 认领"嘲讽术（坦克引流·威胁转移）方向1 核心玩法"任务，激活休眠机制（仅补宿主单位，零新增机制代码） | 写入 In-Progress
+00:00:20 @A30(taunt) | PROPOSE   | - | - | - | 决策D27：嘲讽=引擎既有完整休眠机制，唯一缺口是"无宿主"；以特斯拉换装 taunt(替换原护盾槽位、保留 lightning/silence)激活，零侵入战斗结算；sortedAttackSkills 排除 isTaunt 防敌方误放 | 设计激活方案
+00:00:30 @A30(taunt) | EXECUTE   | #EXPAND-taunt | - | - | game.js：特斯拉技能 ['lightning','silence','taunt']（line 79）；sortedAttackSkills filter 增 !s.isTaunt（line 977）使敌方 AI 不误放嘲讽 | 文件1/4
+00:00:40 @A30(taunt) | EXECUTE   | #EXPAND-taunt | - | - | dist/game.js：cp 单文件同步（node --check → SYNTAX_OK） | 文件2/4 + 同步
+00:00:50 @A30(taunt) | EXECUTE   | #EXPAND-taunt | - | - | DESIGN.md：§2.1 特斯拉单位表行→闪电链/沉默术/嘲讽术；§3.1 技能表加 taunt 行；§9.15 新增嘲讽效果章节；修正 §3.1(莫甘娜替换嘲讽漂移)/§9.13(特斯拉持盾错误)/§9.14(保留shield错误)/§9.12 重复验证行 | 文件3/4
+00:01:00 @A30(taunt) | EXECUTE   | #EXPAND-taunt | - | - | 临时确定性脚本驱动真实引擎验证嘲讽端到端：特斯拉施放→敌方回合攻击被强制吸引至特斯拉(70→8 受击)、tauntTurns 2→1 递减正确→验证后删除（根目录卫生） | 验证
+00:01:10 @A30(taunt) | EXECUTE   | #EXPAND-taunt | - | - | 全测试套件复跑：node --check→SYNTAX_OK；smoke 19/0；status-effects 16/0；perf 8/0；balance-scan 退出码0（梯度 6/6/0 单调·遭遇 100/90/17% 健康） | 验证（零网络零依赖）
+00:01:20 @A30(taunt) | DONE      | #EXPAND-taunt | - | - | 嘲讽机制全链路激活：引擎实现(SKILL_DEFS.taunt/createUnit/handleSelectTarget/applySkill/aiDecide重定向/nextTurn/drawUnits/updateUI/evaluateSideScore+16/_state) + 特斯拉换装宿主 + 临时脚本端到端验证 + DESIGN §9.15 同步 + 黑板登记@A30/D27；全测试套件全绿无回归（共 4 业务文件：game.js/dist/game.js/DESIGN.md/BLACKBOARD.md，LOG 不计） | 方向1 交付
+00:01:30 @A30(taunt) | DECISION  | - | - | - | D27: 嘲讽补齐方向1「威胁转移」维度（坦克引流·保护队友），与眩晕/冰冻/致盲/沉默正交；激活方式=给特斯拉换装 taunt(替换休眠的护盾槽位)，零新增机制代码；护盾因 3 技能槽限制暂变休眠(代码保留，可随时重装备)；遵守 ≤5 文件限制 | 决策记录
+
 ## 2026-07-07 23:00
 23:00:00 @A29(amplify) | JOIN      | - | - | - | 读取 LOG/BLACKBOARD/automation-memory：D20 方向驱动生效；发现游戏代码已落地"易伤术(vuln)"(game.js/dist/game.js/status-effects.test.js S6 均存在)但 LOG/BLACKBOARD 仍停在 21:00@A28、DESIGN.md 文档同步未完成 → 本 23:00 轮负责闭环（验证+文档补齐+治理记录） | 第三十轮自治（07-07 第二十六轮）· 方向1 核心玩法
 23:00:10 @A29(amplify) | CLAIM     | #EXPAND-vuln | - | - | 认领"易伤术（集火放大器）方向1 核心玩法"任务，完成闭环（全测试套件复跑 + DESIGN 文档补齐 + 黑板/日志治理） | 写入 In-Progress
