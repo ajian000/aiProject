@@ -66,6 +66,12 @@ const FACTIONS = {
   eclipse:    { name: '蚀教', color: '#ab47bc', aiStyle: 'aggressive' },
   echo:       { name: '回响', color: '#4dd0e1', aiStyle: 'aggressive' },
   primordial: { name: '溯光', color: '#ffd180', aiStyle: 'aggressive' },
+  // —— 外传阵营（方向2 内容扩建 · 外传六/七/本轮回合登场）——
+  // rust=锈铁佣兵（无灵脉的凡人武装）/ construct=灰烬构装体（失控灵械）/ dust=噬尘游民（游荡废墟的拾荒商队）
+  // 三者此前未注册时 AI 默认 aggressive；此处显式登记，行为与既有默认完全一致（balance-safe）。
+  rust:       { name: '锈铁佣兵', color: '#a1887f', aiStyle: 'aggressive' },
+  construct:  { name: '灰烬构装', color: '#78909c', aiStyle: 'aggressive' },
+  dust:       { name: '噬尘游民', color: '#c0a16b', aiStyle: 'aggressive' },
 };
 
 const DIFFICULTY = {
@@ -73,6 +79,109 @@ const DIFFICULTY = {
   normal: { key: 'normal', name: '普通', hpMul: 0.80, dmgMul: 1.00 },
   hard:   { key: 'hard',   name: '困难', hpMul: 1.25, dmgMul: 1.10 },
 };
+
+
+// ===== core/terrain.js =====
+// ============================================================
+// Core: Terrain — 地图地形矩阵系统（方向5 地图系统升级 · Phase 1 核心机制）
+// 参考：magic-arena/map-redesign-plan.md §2.2 / §3.2
+// 提供 10+ 种地形类型、移动消耗、不可通行、高地、旧格式兼容升迁。
+// 纯数据 + 纯函数，零战斗逻辑侵入；旧地图（cover/hazard）自动升迁为平地矩阵，
+// 保持既有 cover(-30%受伤) 与 hazard(+8伤害/回合) 行为完全不变 → balance-safe。
+// ============================================================
+
+// 地形类型定义表（字符 → 语义）
+// cost: 进入该格的移动消耗（Infinity = 不可通行）；passable: 是否可进入；
+// cover: 是否提供掩体(受伤-30%)；hazardDmg: 每回合环境伤害；high: 是否高地(站此攻击+20%)。
+const TERRAIN = {
+  '.': { key: '.', name: '平地', cost: 1, passable: true, cover: false, hazardDmg: 0, high: false, glyph: '' },
+  'R': { key: 'R', name: '路面', cost: 1, passable: true, cover: false, hazardDmg: 0, high: false, glyph: '' },
+  'T': { key: 'T', name: '树林', cost: 2, passable: true, cover: true, hazardDmg: 0, high: false, glyph: '林' },
+  'W': { key: 'W', name: '矮墙', cost: 2, passable: true, cover: true, hazardDmg: 0, high: false, glyph: '墙' },
+  'M': { key: 'M', name: '沼泽', cost: 3, passable: true, cover: false, hazardDmg: 4, high: false, glyph: '沼' },
+  'L': { key: 'L', name: '熔岩', cost: Infinity, passable: false, cover: false, hazardDmg: 8, high: false, glyph: '岩' },
+  'A': { key: 'A', name: '水域', cost: Infinity, passable: false, cover: false, hazardDmg: 0, high: false, glyph: '水' },
+  'C': { key: 'C', name: '悬崖', cost: Infinity, passable: false, cover: false, hazardDmg: 0, high: false, glyph: '崖' },
+  'H': { key: 'H', name: '高地', cost: 2, passable: true, cover: false, hazardDmg: 0, high: true, glyph: '高' },
+  'D': { key: 'D', name: '门户', cost: 1, passable: true, cover: false, hazardDmg: 0, high: false, glyph: '门' },
+  'B': { key: 'B', name: '可破坏墙', cost: 2, passable: true, cover: true, hazardDmg: 0, high: false, glyph: '裂' },
+  'P': { key: 'P', name: '玩家部署区', cost: 1, passable: true, cover: false, hazardDmg: 0, high: false, glyph: '' },
+  'E': { key: 'E', name: '敌方部署区', cost: 1, passable: true, cover: false, hazardDmg: 0, high: false, glyph: '' },
+};
+
+// 地形渲染配色（仅供 renderer.js 使用）
+const TILE_BG = {
+  'T': 'rgba(34,139,34,0.35)',
+  'W': 'rgba(120,120,140,0.40)',
+  'M': 'rgba(106,90,24,0.40)',
+  'L': 'rgba(244,67,54,0.30)',
+  'A': 'rgba(30,120,200,0.45)',
+  'C': 'rgba(60,60,80,0.55)',
+  'H': 'rgba(210,180,90,0.30)',
+  'D': 'rgba(240,192,127,0.22)',
+  'B': 'rgba(140,90,150,0.40)',
+};
+const TILE_FG = {
+  'T': '#bfe6bf', 'W': '#dcdce6', 'M': '#e6dca0', 'L': '#ff8a80', 'A': '#90caf9',
+  'C': '#b0b0c0', 'H': '#ffe0a0', 'D': '#f0c27f', 'B': '#e1bee7',
+};
+
+// 当前战场的地形网格（二维数组 grid[y][x] = TERRAIN 条目）；startBattle 时由 setActiveTerrain 填充
+let activeTerrain = null;
+
+// 解析地图 → 地形网格
+// 新格式：mapObj.tiles 为行字符串数组，直接逐字符映射为 TERRAIN 矩阵（行列数以 tiles 为准）。
+// 旧格式：无 tiles 字段 → 全平地矩阵 + 将 cover 升迁为掩体格(cost1,保持可通行)、hazard 升迁为危险格(cost1,+8伤害,保持可通行)。
+//         这样旧 29 张地图的 cover/hazard 行为 100% 保留，balance-scan 零回归。
+function parseMapTiles(mapObj) {
+  if (mapObj && Array.isArray(mapObj.tiles) && mapObj.tiles.length > 0) {
+    const grid = mapObj.tiles.map(row => row.split('').map(ch => TERRAIN[ch] || TERRAIN['.']));
+    for (let y = 0; y < grid.length; y++) {
+      if (!grid[y]) grid[y] = [];
+      for (let x = 0; x < grid[y].length; x++) {
+        if (!grid[y][x]) grid[y][x] = TERRAIN['.'];
+      }
+    }
+    return grid;
+  }
+  // 旧格式兼容：GRID_W × GRID_H 全平地
+  const grid = [];
+  for (let y = 0; y < GRID_H; y++) {
+    const row = [];
+    for (let x = 0; x < GRID_W; x++) row.push(TERRAIN['.']);
+    grid.push(row);
+  }
+  const coverSet = (mapObj && mapObj.cover) || [];
+  coverSet.forEach(c => {
+    if (grid[c.gy] && grid[c.gy][c.gx]) {
+      // 旧 cover：保留可通行 + cost1，仅追加 cover 掩体属性（行为与旧版一致）
+      grid[c.gy][c.gx] = Object.assign({}, TERRAIN['.'], { cover: true });
+    }
+  });
+  const hazardSet = (mapObj && mapObj.hazard) || [];
+  hazardSet.forEach(c => {
+    if (grid[c.gy] && grid[c.gy][c.gx]) {
+      // 旧 hazard：保留可通行 + cost1，仅把环境伤害设为 HAZARD_DMG（行为与旧版一致）
+      grid[c.gy][c.gx] = Object.assign({}, TERRAIN['.'], { hazardDmg: HAZARD_DMG });
+    }
+  });
+  return grid;
+}
+
+function setActiveTerrain(grid) { activeTerrain = grid; }
+
+function tileAt(gx, gy) {
+  if (!activeTerrain) return TERRAIN['.'];
+  if (gy < 0 || gy >= activeTerrain.length) return TERRAIN['.'];
+  if (gx < 0 || gx >= activeTerrain[gy].length) return TERRAIN['.'];
+  return activeTerrain[gy][gx];
+}
+
+function getTileCost(gx, gy) { return tileAt(gx, gy).cost; }
+function isPassable(gx, gy) { return tileAt(gx, gy).passable; }
+function isCoverAt(gx, gy) { return tileAt(gx, gy).cover; }
+function isHighAt(gx, gy) { return tileAt(gx, gy).high; }
+function getTileHazardDmg(gx, gy) { return tileAt(gx, gy).hazardDmg; }
 
 
 // ===== data/skills.js =====
@@ -168,6 +277,18 @@ const ENEMY_UNITS = [
   { name: '溯光咏史·琉恩', maxHp: 72, moveRange: 2, faction: 'primordial', unitType: 'mage', skills: ['shadowbolt', 'burn', 'drain'], color: '#ffe0b2' },
   { name: '溯光守垣·阿戈', maxHp: 94, moveRange: 2, faction: 'primordial', unitType: 'warrior', skills: ['fireball', 'stun', 'taunt'], color: '#ffcc80' },
   { name: '溯光游隼·薇恩', maxHp: 68, moveRange: 3, faction: 'primordial', unitType: 'archer', skills: ['silence', 'lightning', 'blind'], color: '#ffe082' },
+  // —— 外传六/外传七（方向2 内容扩建）新增敌方单位：锈铁佣兵团（无灵脉的凡人武装，靠灵械与弩炮据守商道）——
+  { name: '锈铁佣兵队长·加尔', maxHp: 90, moveRange: 2, faction: 'rust', unitType: 'warrior', skills: ['fireball', 'stun', 'taunt'], color: '#bcaaa4' },
+  { name: '锈铁弩手·薇拉', maxHp: 66, moveRange: 3, faction: 'rust', unitType: 'archer', skills: ['lightning', 'silence', 'blind'], color: '#a1887f' },
+  { name: '锈铁工兵·铎恩', maxHp: 78, moveRange: 2, faction: 'rust', unitType: 'mage', skills: ['meteor', 'poison', 'drain'], color: '#8d6e63' },
+  // —— 外传七（方向2 内容扩建）新增敌方单位：灰烬构装体（玄雷塔失控灵械，核心被裂缝之外低语改写）——
+  { name: '构装守卫·泰坦', maxHp: 95, moveRange: 2, faction: 'construct', unitType: 'warrior', skills: ['fireball', 'stun', 'taunt'], color: '#90a4ae' },
+  { name: '织雷机偶·瑟拉', maxHp: 68, moveRange: 3, faction: 'construct', unitType: 'archer', skills: ['lightning', 'silence', 'blind'], color: '#78909c' },
+  { name: '熔心核心·伊格', maxHp: 72, moveRange: 2, faction: 'construct', unitType: 'mage', skills: ['meteor', 'burn', 'drain'], color: '#607d8b' },
+  // —— 外传八/外传九（方向2 内容扩建）新增敌方单位：噬尘游民（灵脉危机后游荡于废墟与灰烬之间的拾荒商队，靠倒卖灵械与记忆维生）——
+  { name: '沙掠者·卡兹', maxHp: 88, moveRange: 2, faction: 'dust', unitType: 'warrior', skills: ['fireball', 'stun', 'taunt'], color: '#c0a16b' },
+  { name: '风语者·希瓦', maxHp: 66, moveRange: 3, faction: 'dust', unitType: 'archer', skills: ['lightning', 'silence', 'blind'], color: '#d7c4a1' },
+  { name: '烬卜师·摩恩', maxHp: 72, moveRange: 2, faction: 'dust', unitType: 'mage', skills: ['meteor', 'poison', 'drain'], color: '#a8956e' },
 ];
 
 const BOSS_UNITS = [
@@ -262,6 +383,32 @@ const MAPS = [
     cover: [{ gx: 4, gy: 3 }, { gx: 8, gy: 6 }], hazard: [{ gx: 3, gy: 4 }, { gx: 5, gy: 5 }, { gx: 6, gy: 7 }, { gx: 2, gy: 8 }, { gx: 7, gy: 2 }, { gx: 4, gy: 8 }] },
   { id: 'first_dawn', name: '初晓之原', biome: 'grassland',
     cover: [{ gx: 3, gy: 2 }, { gx: 6, gy: 6 }], hazard: [{ gx: 5, gy: 4 }, { gx: 4, gy: 7 }, { gx: 7, gy: 5 }] },
+  // —— 外传六/外传七（方向2 内容扩建）新增地图 ——
+  { id: 'rust_road', name: '锈铁商道', biome: 'snow',
+    cover: [{ gx: 3, gy: 2 }, { gx: 6, gy: 5 }, { gx: 8, gy: 3 }], hazard: [{ gx: 4, gy: 4 }, { gx: 5, gy: 3 }, { gx: 7, gy: 6 }, { gx: 2, gy: 7 }] },
+  { id: 'stardust_obs', name: '星尘观测台', biome: 'ruins',
+    cover: [{ gx: 4, gy: 2 }, { gx: 6, gy: 6 }, { gx: 2, gy: 5 }], hazard: [{ gx: 5, gy: 4 }, { gx: 3, gy: 7 }, { gx: 7, gy: 3 }, { gx: 4, gy: 8 }] },
+  // —— 外传八/外传九（方向2 内容扩建）新增地图：噬尘游民盘踞的灰烬集市与潮汐圣龛 ——
+  { id: 'ash_market', name: '灰烬集市', biome: 'volcano',
+    cover: [{ gx: 3, gy: 2 }, { gx: 7, gy: 5 }, { gx: 5, gy: 6 }], hazard: [{ gx: 4, gy: 4 }, { gx: 6, gy: 3 }, { gx: 2, gy: 7 }, { gx: 8, gy: 2 }] },
+  { id: 'tide_shrine', name: '潮汐圣龛', biome: 'ruins',
+    cover: [{ gx: 4, gy: 2 }, { gx: 6, gy: 6 }, { gx: 2, gy: 5 }], hazard: [{ gx: 5, gy: 4 }, { gx: 3, gy: 7 }, { gx: 7, gy: 3 }, { gx: 8, gy: 6 }] },
+  // —— 方向5 地图系统升级 · 首张 tiles 地形矩阵重设计地图（证明地形系统落地）——
+  // 河道哨探：中央纵向水域(col5/6)分割战场，仅 row4 一座门户(D)桥可通行 → 强制走位路径依赖；
+  // 树林(T)提供掩体且移动消耗2、高地(H)站之攻击+20%、沼泽(M)每回合-4HP且消耗3。
+  { id: 'river_plain', name: '河道哨探', biome: 'grassland',
+    tiles: [
+      '.....AA.....',
+      '..T..AA..T..',
+      '...MHAA.....',
+      '.....AA.....',
+      '.P...DD...E.',
+      '.....AA.....',
+      '..T..AA..T..',
+      '....MAAH....',
+      '.....AA.....',
+      '.....AA.....',
+    ] },
 ];
 
 const CAMPAIGN = [
@@ -441,6 +588,49 @@ const SIDE_STORIES = [
     enemies: [{ src: 'enemy', i: 18 }, { src: 'enemy', i: 19 }, { src: 'enemy', i: 12 }, { src: 'enemy', i: 13 }, { src: 'enemy', i: 11 }],
     opening: '星渊走廊的封印虽已被你破开，却仍有不甘的守军游荡其间。裂隙守望者·奥恩的残部以走廊为巢，绑架沿途的学派信使，逼问星渊之喉「复活」之法。若让他们找到答案，刚合拢的天裂将再度裂开。你循着信使的求救灵火，重返那条歌哭般的走廊。',
     closing: '残部溃散，被掳的信使获救。他们交给你一卷以星屑写就的「走廊回音」——记载着星渊之喉第一次苏醒前，曾与人类灵能者立下的契约。你尚未读懂契约内容，只看见末尾一句：「凡掌碎片者，皆为守门人，亦皆为囚徒。」',
+  },
+  // —— 外传六 · 锈铁商道（方向2 内容扩建）——
+  // 全新凡人阵营「锈铁佣兵团」登场：无灵脉、靠缴获灵械与弩炮据守商道，是被裂缝之外逼出的「铁壁」威胁。
+  // 复用既有「歼灭全部敌人」胜利条件（零方向1 引擎改动、balance-safe），原创叙事 + 新增地图。
+  {
+    id: 'rust_road',
+    title: '外传六 · 锈铁商道',
+    map: 26,
+    enemies: [{ src: 'enemy', i: 32 }, { src: 'enemy', i: 33 }, { src: 'enemy', i: 34 }, { src: 'enemy', i: 0 }, { src: 'enemy', i: 1 }],
+    opening: '天裂合拢后，散落的灵脉碎片被各路人马哄抢。一支毫无灵能的「锈铁佣兵团」却靠缴获的灵械与弩炮，在边陲商道上筑起关卡，向过往旅人强征「过路灵税」。他们不信灵脉、只信铁与金——这帮凡人武装，成了裂缝之外最讽刺的威胁：当魔法退潮，握剑的手反而最硬。你循着被劫商队遗落的灵火，踏入了这条锈迹斑斑的峡谷商道。',
+    closing: '锈铁佣兵队长·加尔倒下时，从怀里摸出一枚褪色的商道徽记——他本是这条路上的脚夫，商道荒废后才握起了枪。你没收了他们抢来的灵脉碎片，却把徽记轻轻放回他手边。有些墙是铁砌的，有些墙是人心砌的；铁墙塌了，人心的墙未必就倒。商道重新通车那日，你听见远处又有锈铁碰撞的声响——也许，这群凡人还没学会放下枪。',
+  },
+  // —— 外传七 · 星尘观测台（方向2 内容扩建）——
+  // 全新失控灵械阵营「灰烬构装体」登场：玄雷塔观测灵脉的造物被裂缝之外低语改写核心，转而抽空山域灵脉。
+  // 复用既有「歼灭全部敌人」胜利条件（零方向1 引擎改动、balance-safe），原创叙事 + 新增地图。
+  {
+    id: 'stardust_obs',
+    title: '外传七 · 星尘观测台',
+    map: 27,
+    enemies: [{ src: 'enemy', i: 35 }, { src: 'enemy', i: 36 }, { src: 'enemy', i: 37 }, { src: 'enemy', i: 12 }, { src: 'enemy', i: 15 }],
+    opening: '玄雷塔的造物「灰烬构装体」本是用来观测灵脉、预警枯萎的灵械。可当观测台接收到的星光里混入了裂缝之外的低语，构装体的核心被悄然改写——它们不再预警，转而「采集」一切经过的灵脉，献给某个不存在的「主人」。织雷机偶·瑟拉带着失控的构装守卫封锁了山巅观测台，把守塔的学者困在齿轮之间。若让构装体把整片山域的灵脉抽空，下一次枯萎将无人知晓。你循着紊乱的雷频，攀上了这座沉默的观测台。',
+    closing: '熔心核心·伊格崩解时，观测台穹顶的星图重新亮起——原来它一直在记录裂缝之外的低语，只是被构装体误读成了「指令」。你把星图抄录下来，第一次看清：那些低语不是命令，而是一声跨越裂缝的、疲惫的问询。玄雷塔的学者们重掌观测台，将星图列为最高机密。你转身下山时想：或许最危险的敌人，从来不是握枪的凡人，而是被一句谎绊住、忘了自己原本在守护什么的造物。',
+  },
+  // —— 外传八 · 灰烬集市（方向2 内容扩建）——
+  // 全新游民阵营「噬尘游民」登场：灵脉危机后游荡于废墟与灰烬之间的拾荒商队，靠倒卖灵械与记忆维生。
+  // 复用既有「歼灭全部敌人」胜利条件（零方向1 引擎改动、balance-safe），原创叙事 + 新增地图。
+  {
+    id: 'ash_market',
+    title: '外传八 · 灰烬集市',
+    map: 28,
+    enemies: [{ src: 'enemy', i: 38 }, { src: 'enemy', i: 39 }, { src: 'enemy', i: 40 }, { src: 'enemy', i: 0 }, { src: 'enemy', i: 1 }],
+    opening: '天裂合拢后，散落的灵脉碎片在黑市上被炒到天价。一支自称「噬尘游民」的拾荒商队赶着灵兽车，在废墟间的灰烬集市摆开了摊——他们不拜任何学派，只信「能换钱的就是真灵脉」。今日压轴的拍品，竟是一枚仍在跳动的「灵脉之种」，据说是某位陨落强者的最后一点本源。若让它落入最高出价者手中，无人知道会被酿成第几场灾。你循着被克扣的灵火，踏入了这座终年落灰的集市。',
+    closing: '沙掠者·卡兹倒下时，从怀中抖落一叠写满名字的「欠条」——那是他替每一位卖掉的记忆，向原主记下的债。你没收了灵脉之种，却把欠条一张张念给风里的亡灵听。有些交易从一开始就该作废；有些记忆，本就不该被标价。集市散去那日，你听见远处沙丘后又响起拨浪鼓的声响——也许，这群游民还没学会把人放下。',
+  },
+  // —— 外传九 · 潮汐圣龛（方向2 内容扩建）——
+  // 噬尘游民把劫来的「潮之鳞」碎片供在远古潮汐圣龛，妄图以记忆之潮唤回某个早已逝去的「商队之母」。
+  {
+    id: 'tide_shrine',
+    title: '外传九 · 潮汐圣龛',
+    map: 29,
+    enemies: [{ src: 'enemy', i: 38 }, { src: 'enemy', i: 39 }, { src: 'enemy', i: 40 }, { src: 'enemy', i: 12 }, { src: 'enemy', i: 15 }],
+    opening: '灰烬集市一役后，你循着被夺灵脉之种的余温，追到一座半沉于沙海的古祭坛——噬尘游民称它为「潮汐圣龛」。他们把劫来的「潮之鳞」碎片供在坛心，妄图以记忆之潮唤回某个早已逝去的「商队之母」，让这支再无归处的游民重新有了一个「家」。烬卜师·摩恩立于潮水前，低声念着无人听懂的咒：「只要她回来，我们就不再漂泊。」若让潮水漫过整片沙海，所有被吞没的记忆都将化为游民的执念，再难平息。你踏碎沙浪，走向那座低语的圣龛。',
+    closing: '当烬卜师·摩恩在最后一击中散去，坛心的潮之鳞缓缓沉回沙底——它终于明白：被它唤作「母亲」的那道灵脉，从不属于任何一支商队，她只是大陆自己的一次呼吸。风语者·希瓦在潮退前留下一句：「我们不走啦，就在这儿，替她守着这片沙。」你转身时想：或许噬尘游民要的从来不是归处，而是一个愿意为他们停下来的地方。而这座圣龛，从此多了一盏不灭的灯。',
   },
 ];
 
@@ -742,6 +932,9 @@ const WORLD_LORE = [
   { title: '溯光者', category: '隐藏势力', text: '溯光者是灵脉分裂之前、那道尚未被劈成「守护」与「吞噬」的源初之脉留下的「守忆者」。他们不战斗、不吞噬，只负责把「世界曾经是一体的」这件事一遍遍复诵，以防后人忘记分裂之前的模样。源初之庭是他们的聚居地，庭中浮着未分裂的记忆；而溯光之冠·奥拉若，是第一个决定「把世界护下来」的灵能者，也是涅莎与厄科尚未分开时的共同前身。当两半终于在玩家掌心相拥，溯光者便从「守忆」，变成了「见证完满」的回响。' },
   { title: '灵能之潮（前史）', category: '历史', text: '「灵能之潮」被后世尊为赐礼，却少有人知它第一次漫上大陆时，几乎将幼弱的世界焚尽——五条主脉在同一瞬同时苏醒，灵能像失控的潮水互相冲撞，无数尚未命名的城邦在浪尖上沉浮。正是为了给大陆争取喘息，第一道灵脉（日后被称为涅莎、亦被称为厄科、被称为奥拉若的那一个）才把自己劈成两半：一半去安抚、一半去承受。所谓「灵能之潮」的温柔，其实是有人替整片大陆，先挨了那一记。这便是隐藏章节·第三卷「灵脉分裂前叙事」想要揭开的、比蚀教与回响都更古旧的真相。' },
   { title: '初晓之原', category: '地理', text: '初晓之原是灵脉分裂之前，大陆尚未被五脉划界的「第一片黎明」。这里没有学派、没有疆界，只有一道愿意为万物哼唱的源初之脉。溯光之冠·奥拉若便守在此处——她是第一个看见灵能之潮、也是第一个决定「护下世界」的灵能者。传说只要走进初晓之原，便能听见分裂之前、那首全员同唱的歌。隐藏章节·第三卷的终幕便在此落幕：玩家把被涅莎与厄科各自攥了千年的两半，连同奥拉若未及说出口的「第三种可能」，一并交还给这片最初的黎明。' },
+  // —— 外传六/外传七（方向2 内容扩建）新增百科 ——
+  { title: '锈铁佣兵团', category: '势力', text: '锈铁佣兵团是天裂之后涌现的「凡人武装」：他们毫无灵能，却靠缴获的灵械、弩炮与铁壁据守边陲商道，向过往旅人强征「过路灵税」。当魔法退潮、各学派自顾不暇，这群握枪的手反而成了最硬的墙——他们不信灵脉、只信铁与金，是裂缝之外最讽刺的威胁。其成员多是商道荒废后失了活路的脚夫与护商，队长·加尔臂上那枚褪色徽记，便是他们从「守路人」沦为「拦路人」的残痕。' },
+  { title: '灰烬构装体', category: '设定', text: '灰烬构装体是玄雷塔以灵械术打造的「观测造物」，本用于监测灵脉律动、预警枯萎。可当观测台接收到的星光混入裂缝之外的低语，构装体的核心被悄然改写——它们不再预警，转而把经过的灵脉「抽空、献给主人」。织雷机偶·瑟拉与构装守卫·泰坦便是在此低语下失控，封锁山巅观测台。它们不是恶，只是被一句谎绊住、忘了自己原本在守护什么；所谓「灰烬」，是灵械之心被篡改后， residue 般残存的、对「指令」的执念。' },
 ];
 
 
@@ -838,6 +1031,57 @@ const BOND_PAIRS = [
 ];
 
 
+// ===== data/classchange.js =====
+// ============================================================
+// Data: Class Change — 转职 / 进阶系统（方向3 系统新创 · Class Change）
+// 说明：本文件定义「转职」数据层，是方向3（延长游戏时长的系统）中
+//       继装备系统、羁绊/好感度系统之后的第三项正式子系统。它把
+//       PRODUCT.md 要求的「角色成长 / 转职」落地为可成长的战前决策：
+//         - CLASS_CHANGE：转职门槛（成长等级）与进阶后的数值乘数
+//         - CLASS_TITLE：每个玩家单位进阶后的原创职业名（纯文案）
+//         - PROMOTED_SKILL：进阶后解锁的「1 个既有技能」——从 SKILL_DEFS
+//           中重编组而来，**不定义任何新技能/状态/机制/AI**，方向1 冻结零触碰
+//       设计约束：转职仅做"数值重分配 + 既有技能重编组"，延长单局/角色养成时长，
+//       绝不影响核心战斗引擎（无新状态、无新 AI 行为、无新机制钩子）。
+// ============================================================
+
+// 转职门槛与进阶数值乘数（幅度克制，避免破坏 balance-scan 的难度梯度）
+const CLASS_CHANGE = {
+  minLevel: 5,   // 角色成长达到该等级方可转职（养成里程碑，延长游戏时长）
+  hpMul: 1.20,   // 进阶后最大生命 ×1.2
+  dmgMul: 1.10,  // 进阶后所有技能伤害 ×1.1
+};
+
+// 每个玩家单位进阶后的原创职业名（文案，仅展示）
+const CLASS_TITLE = {
+  '炎法师·艾拉': '炎息术师',
+  '雷法师·特斯拉': '雷暴操纵者',
+  '暗法师·莫甘娜': '虚蚀咏者',
+  '风行者·翠影': '疾风游侠',
+  '熔岩剑士·戈伦': '熔岩战将',
+  '圣光祭司·塞拉': '圣辉主教',
+  '圣堂守卫·加百列': '圣堂圣骑',
+  '曙光射手·奥菲': '曙光神射手',
+  '圣盾使·乌列尔': '永恒守盾',
+  '曦光咏者·提娅': '曦光圣咏',
+};
+
+// 进阶后解锁的「1 个既有技能」——全部取自 SKILL_DEFS，按单位定位重编组。
+// 不新增任何技能定义；仅把已存在的技能重新分配给进阶形态，达成「数值重分配」式成长。
+const PROMOTED_SKILL = {
+  '炎法师·艾拉': 'meteor',    // 进阶为范围 AoE 爆发
+  '雷法师·特斯拉': 'blind',   // 进阶补足控制（致盲削弱敌方输出）
+  '暗法师·莫甘娜': 'shadowbolt', // 进阶补足稳定单体输出
+  '风行者·翠影': 'drain',     // 进阶补足续航（汲取自疗）
+  '熔岩剑士·戈伦': 'burn',    // 进阶补足持续灼烧
+  '圣光祭司·塞拉': 'shield',  // 进阶补足护盾保护
+  '圣堂守卫·加百列': 'taunt', // 进阶补足坦克引流
+  '曙光射手·奥菲': 'blind',   // 进阶补足控制
+  '圣盾使·乌列尔': 'shield',  // 进阶补足护盾保护
+  '曦光咏者·提娅': 'empower', // 进阶补足进攻增益
+};
+
+
 // ===== core/state.js =====
 // ============================================================
 // Core: State — 运行时游戏状态变量
@@ -894,8 +1138,10 @@ function pixelToCell(px, py) { return { gx: Math.floor(px / CELL), gy: Math.floo
 function cellDist(a, b) { return Math.abs(a.gx - b.gx) + Math.abs(a.gy - b.gy); }
 function cellDistPt(gx1, gy1, gx2, gy2) { return Math.abs(gx1 - gx2) + Math.abs(gy1 - gy2); }
 function getUnitAt(gx, gy) { return units.find(u => u.gx === gx && u.gy === gy && u.hp > 0); }
-function coverAt(gx, gy) { return !!(currentMap && currentMap.cover && currentMap.cover.some(c => c.gx === gx && c.gy === gy)); }
-function hazardAt(gx, gy) { return !!(currentMap && currentMap.hazard && currentMap.hazard.some(c => c.gx === gx && c.gy === gy)); }
+// 地形委派（方向5 地图系统升级）：cover/hazard 现由地形矩阵统一提供；
+// 旧地图经 parseMapTiles 自动升迁后行为完全一致（cover 仍-30%受伤 / hazard 仍+8伤害·回合）。
+function coverAt(gx, gy) { return isCoverAt(gx, gy); }
+function hazardAt(gx, gy) { return getTileHazardDmg(gx, gy) > 0; }
 
 function shuffle(arr) {
   for (let i = arr.length - 1; i > 0; i--) {
@@ -915,10 +1161,33 @@ function pushFloater(gx, gy, text, kind) {
 // Core: Unit Factory — 创建单位（含难度缩放 + 成长 + 装备）
 // ============================================================
 
+// 由 SKILL_DEFS 构建一个技能实例（与 createUnit 基础技能同一映射规则）
+function buildSkillInstance(sk, dmgMul) {
+  const base = SKILL_DEFS[sk];
+  return {
+    ...base,
+    key: sk, cd: 0,
+    dmg: Math.round(base.dmg * dmgMul),
+    burnDmg: base.burnDmg ? Math.round(base.burnDmg * dmgMul) : 0,
+    poisonDmg: base.poisonDmg ? Math.round(base.poisonDmg * dmgMul) : 0,
+  };
+}
+
 function createUnit(def, team, gx, gy) {
   const d = DIFFICULTY[difficulty] || DIFFICULTY.normal;
   const hpMul = team === 'enemy' ? d.hpMul : 1;
   const dmgMul = team === 'enemy' ? d.dmgMul : 1;
+  // 基础技能列表
+  const skills = def.skills.map(s => buildSkillInstance(s, dmgMul));
+  // 转职系统（方向3 系统新创）：已转职玩家单位追加 1 个「既有技能」（从 SKILL_DEFS 重编组，
+  // 不定义任何新技能/状态/机制，方向1 冻结零触碰）。该技能随后一并享受成长/装备加成。
+  const promoted = !!(team === 'player' && saveData.classes && saveData.classes[def.name]);
+  if (promoted) {
+    const pk = PROMOTED_SKILL[def.name];
+    if (pk && SKILL_DEFS[pk] && !def.skills.includes(pk)) {
+      skills.push(buildSkillInstance(pk, dmgMul));
+    }
+  }
   const maxHp = Math.max(1, Math.round(def.maxHp * hpMul));
   const u = {
     id: `${team}_${gx}_${gy}`,
@@ -929,16 +1198,7 @@ function createUnit(def, team, gx, gy) {
     maxHp,
     hp: maxHp,
     moveRange: def.moveRange,
-    skills: def.skills.map(s => {
-      const base = SKILL_DEFS[s];
-      return {
-        ...base,
-        key: s, cd: 0,
-        dmg: Math.round(base.dmg * dmgMul),
-        burnDmg: base.burnDmg ? Math.round(base.burnDmg * dmgMul) : 0,
-        poisonDmg: base.poisonDmg ? Math.round(base.poisonDmg * dmgMul) : 0,
-      };
-    }),
+    skills,
     gx, gy,
     color: def.color,
     unitType: def.unitType || null,
@@ -989,6 +1249,17 @@ function createUnit(def, team, gx, gy) {
         });
       }
     }
+  }
+  // 转职系统（方向3 系统新创）：已转职玩家单位叠加进阶数值乘数（HP/伤害）。
+  // 仅作用于玩家单位；默认 classes 为空（既有测试与平衡自检）时无任何加成。
+  if (promoted) {
+    u.maxHp = Math.max(1, Math.round(u.maxHp * CLASS_CHANGE.hpMul));
+    u.hp = u.maxHp;
+    u.skills.forEach(s => {
+      s.dmg = Math.round(s.dmg * CLASS_CHANGE.dmgMul);
+      if (s.burnDmg) s.burnDmg = Math.round(s.burnDmg * CLASS_CHANGE.dmgMul);
+      if (s.poisonDmg) s.poisonDmg = Math.round(s.poisonDmg * CLASS_CHANGE.dmgMul);
+    });
   }
   return u;
 }
@@ -1044,6 +1315,10 @@ function damageUnit(target, dmg, attacker) {
     pushFloater(target.gx, target.gy, '克制!', 'counter');
   }
   if (coverAt(target.gx, target.gy)) actual = Math.floor(actual * COVER_REDUCE);
+  // 高地加成（方向5 地图系统升级 · 高地系统）：攻击者立于高地且目标不在高地 → 伤害 +20%（高打低）
+  if (attacker && attacker.gx !== undefined && isHighAt(attacker.gx, attacker.gy) && !isHighAt(target.gx, target.gy)) {
+    actual = Math.floor(actual * 1.2);
+  }
   if (target.vulnTurns > 0) actual = Math.floor(actual * (1 + VULN_AMP));
   if (target.shield > 0) {
     const absorbed = Math.min(target.shield, actual);
@@ -1259,6 +1534,7 @@ function applySkill(attacker, gx, gy, skill) {
 
 function startBattle(setup) {
   currentMap = MAPS[setup.map];
+  setActiveTerrain(parseMapTiles(currentMap)); // 方向5 地图系统升级：加载当前地图地形矩阵（旧地图自动兼容）
   units = [];
   selectedUnit = null;
   phase = 'selectUnit';
@@ -1330,9 +1606,10 @@ function nextTurn() {
     if (u.shieldTurns > 0) { u.shieldTurns--; if (u.shieldTurns === 0) { u.shield = 0; addLog(`${u.name} 护盾消散`, 'info'); } }
     if (u.empowerTurns > 0) { u.empowerTurns--; if (u.empowerTurns === 0) addLog(`${u.name} 强化解除`, 'info'); }
     if (u.hp > 0 && hazardAt(u.gx, u.gy)) {
-      u.hp -= HAZARD_DMG;
-      pushFloater(u.gx, u.gy, '危' + HAZARD_DMG, 'hazard');
-      addLog(`${u.name} 处于危险格，受到 ${HAZARD_DMG} 点环境伤害`, 'damage');
+      const hd = getTileHazardDmg(u.gx, u.gy);
+      u.hp -= hd;
+      pushFloater(u.gx, u.gy, '危' + hd, 'hazard');
+      addLog(`${u.name} 处于危险格，受到 ${hd} 点环境伤害`, 'damage');
     }
   });
   checkGameEnd();
@@ -1669,6 +1946,27 @@ function buildStaticLayer() {
       c.font = 'bold 13px sans-serif';
       c.fillText('危', co.gx * CELL + CELL / 2, co.gy * CELL + CELL / 2);
     });
+    // 方向5 地图系统升级：地形矩阵渲染（水域/熔岩/悬崖/树林/矮墙/高地/沼泽/门户/可破坏墙）
+    if (activeTerrain) {
+      for (let y = 0; y < GRID_H; y++) {
+        for (let x = 0; x < GRID_W; x++) {
+          const t = activeTerrain[y][x];
+          if (t.key === '.' || t.key === 'P' || t.key === 'E') continue; // 平地/部署区不绘制
+          const bg = TILE_BG[t.key];
+          if (bg) {
+            c.fillStyle = bg;
+            c.fillRect(x * CELL + 1, y * CELL + 1, CELL - 2, CELL - 2);
+          }
+          if (t.glyph) {
+            c.fillStyle = (TILE_FG[t.key] || '#fff');
+            c.font = 'bold 13px sans-serif';
+            c.textAlign = 'center';
+            c.textBaseline = 'middle';
+            c.fillText(t.glyph, x * CELL + CELL / 2, y * CELL + CELL / 2);
+          }
+        }
+      }
+    }
   }
   staticMapId = currentMap ? currentMap.id : null;
   staticRebuilds++;
@@ -1949,15 +2247,40 @@ function startMove() {
 }
 
 function getMoveCells(u) {
-  const cells = [];
-  for (let x = 0; x < GRID_W; x++) {
-    for (let y = 0; y < GRID_H; y++) {
-      if (cellDistPt(u.gx, u.gy, x, y) <= u.moveRange && !getUnitAt(x, y)) {
-        cells.push({ gx: x, gy: y });
+  // 方向5 地图系统升级：基于地形移动消耗的成本 Dijkstra。
+  // 旧地图全为 cost1 平地 → 可达集恰为曼哈顿距离 ≤ moveRange 的空格，与原行为一致；
+  // 新地图含森林(cost2)/沼泽(cost3)/水崖熔岩(不可通行) → 自然产生走位深度与路径依赖。
+  const budget = u.moveRange;
+  const dirs = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+  const best = {};
+  const visited = {};
+  best[u.gx + ',' + u.gy] = 0;
+  const pq = [{ x: u.gx, y: u.gy, c: 0 }];
+  const result = [];
+  while (pq.length) {
+    pq.sort((a, b) => a.c - b.c);
+    const cur = pq.shift();
+    if (visited[cur.x + ',' + cur.y]) continue;
+    visited[cur.x + ',' + cur.y] = true;
+    if (!(cur.x === u.gx && cur.y === u.gy) && !getUnitAt(cur.x, cur.y) && isPassable(cur.x, cur.y)) {
+      result.push({ gx: cur.x, gy: cur.y });
+    }
+    if (cur.c >= budget) continue;
+    for (const [dx, dy] of dirs) {
+      const nx = cur.x + dx, ny = cur.y + dy;
+      if (nx < 0 || nx >= GRID_W || ny < 0 || ny >= GRID_H) continue;
+      if (getUnitAt(nx, ny)) continue; // 不能穿过/进入任何存活单位
+      if (!isPassable(nx, ny)) continue;
+      const nc = cur.c + getTileCost(nx, ny);
+      if (nc > budget) continue;
+      const key = nx + ',' + ny;
+      if (best[key] === undefined || nc < best[key]) {
+        best[key] = nc;
+        pq.push({ x: nx, y: ny, c: nc });
       }
     }
   }
-  return cells;
+  return result;
 }
 
 function castSkill(skillIdx) {
@@ -2047,6 +2370,7 @@ function showMenu() {
     renderCodex();
     renderEquipment();
     renderBonds();
+    renderClassChange();
     menu.style.display = 'flex';
   }
   const wm = document.getElementById('world-map');
@@ -2449,6 +2773,50 @@ function unlockAchievement(id) {
   renderAchievements();
 }
 
+// ---- 转职 / 进阶系统（方向3 系统新创 · Class Change）----
+function renderClassChange() {
+  const panel = document.getElementById('classchange-panel');
+  if (!panel) return;
+  const squad = PLAYER_SQUADS[selectedPlayerFaction] || PLAYER_UNITS;
+  const rows = squad.map(u => {
+    const lv = (saveData.growth && saveData.growth[u.name] && saveData.growth[u.name].level) || 1;
+    const promoted = !!(saveData.classes && saveData.classes[u.name]);
+    const titled = CLASS_TITLE[u.name] || '进阶';
+    const nextSkill = PROMOTED_SKILL[u.name];
+    const nextSkillName = (nextSkill && SKILL_DEFS[nextSkill]) ? SKILL_DEFS[nextSkill].name : '';
+    const canPromote = !promoted && lv >= CLASS_CHANGE.minLevel;
+    const status = promoted
+      ? `已转职 · ${titled}`
+      : (lv >= CLASS_CHANGE.minLevel ? '可转职' : `Lv.${lv} / 需 Lv.${CLASS_CHANGE.minLevel}`);
+    const action = canPromote
+      ? `<button class="cc-btn" onclick="Game.promoteUnit('${u.name}')">转职 → ${titled}</button>`
+      : `<span class="cc-locked">${status}</span>`;
+    const meta = promoted
+      ? `Lv.${lv} · 进阶后 HP×${CLASS_CHANGE.hpMul} 伤害×${CLASS_CHANGE.dmgMul}${nextSkillName ? ' · 已解锁「' + nextSkillName + '」' : ''}`
+      : `Lv.${lv} · 进阶后 HP×${CLASS_CHANGE.hpMul} 伤害×${CLASS_CHANGE.dmgMul}${nextSkillName ? ' · 解锁「' + nextSkillName + '」' : ''}`;
+    return `<div class="cc-unit">
+      <div class="cc-name">${u.name}${promoted ? ' <span class="cc-tag">★ ' + titled + '</span>' : ''}</div>
+      <div class="cc-meta">${meta}</div>
+      <div class="cc-row">${action}</div>
+    </div>`;
+  }).join('');
+  panel.innerHTML = `<div class="cc-grid">${rows}</div>`;
+}
+
+function promoteUnit(name) {
+  const squad = PLAYER_SQUADS[selectedPlayerFaction] || PLAYER_UNITS;
+  if (!squad.some(u => u.name === name)) return;
+  const lv = (saveData.growth && saveData.growth[name] && saveData.growth[name].level) || 1;
+  if (lv < CLASS_CHANGE.minLevel) return;            // 成长等级不足，不可转职
+  if (!saveData.classes) saveData.classes = {};
+  if (saveData.classes[name]) return;                // 已转职，不可重复
+  saveData.classes[name] = true;
+  renderClassChange();
+  const titled = CLASS_TITLE[name] || '进阶';
+  addLog(`${name} 完成转职 · ${titled}`, 'info');
+  try { saveSave(); } catch (e) { /* ignore */ }
+}
+
 // ---- 弹窗系统 ----
 function buildResultStats() {
   if (!lastResult) return '';
@@ -2692,6 +3060,16 @@ function sanitizeSave(obj) {
       if (Number.isFinite(v) && v >= 0 && v <= 3) base.bonds[k] = v;
     }
   } else { base.bonds = {}; }
+  if (obj && typeof obj.classes === 'object' && obj.classes) {
+    base.classes = {};
+    const validUnits = new Set();
+    PLAYER_UNITS.forEach(u => validUnits.add(u.name));
+    LIGHT_SQUAD.forEach(u => validUnits.add(u.name));
+    for (const k of Object.keys(obj.classes)) {
+      if (!validUnits.has(k)) continue;
+      base.classes[k] = !!obj.classes[k];
+    }
+  } else { base.classes = {}; }
   if (obj && typeof obj.sideCleared === 'object' && obj.sideCleared) {
     base.sideCleared = {};
     for (const k of Object.keys(obj.sideCleared)) {
@@ -2815,8 +3193,11 @@ function _state() {
     equip: saveData.equip || {},
     equipment: EQUIPMENT,
     bonds: saveData.bonds || {},
+    classes: saveData.classes || {},
     alignmentScore: saveData.alignmentScore || 0,
     currentMap: currentMap ? { id: currentMap.id, name: currentMap.name, cover: currentMap.cover, hazard: currentMap.hazard } : null,
+    // 方向5 地图系统升级：地形矩阵快照（行拼接，便于纯 Node 断言校验）
+    terrainInfo: activeTerrain ? activeTerrain.map(r => r.map(t => t.key).join('')).join('/') : null,
     saveData: { ...saveData },
     floaters: floaters.map(f => ({ gx: f.gx, gy: f.gy, text: f.text, kind: f.kind, life: f.life })),
     logs: logs.map(l => ({ text: l.text, type: l.type })),
@@ -2846,6 +3227,12 @@ function _state() {
     units.forEach(u => { if (u.team === 'enemy') u.hp = 0; });
   }
 
+  // 测试辅助：设定某单位的角色成长等级（仅测试用，用于校验转职门槛逻辑）
+  function _testSetGrowth(name, level) {
+    if (!saveData.growth) saveData.growth = {};
+    saveData.growth[name] = { exp: 0, level: Math.max(1, Math.floor(Number(level) || 1)) };
+  }
+
 
 // ===== main.js =====
 // ============================================================
@@ -2864,6 +3251,17 @@ function init() {
 
 window.addEventListener('DOMContentLoaded', init);
 
+// ===== 测试辅助（仅测试用 · 地形系统）=====
+function _testStartMapById(id, enemies) {
+  const idx = MAPS.findIndex(m => m.id === id);
+  if (idx < 0) throw new Error('地图不存在: ' + id);
+  startBattle({ map: idx, enemies: enemies || (ENEMY_UNITS ? [{ src: 'enemy', i: 0 }, { src: 'enemy', i: 1 }, { src: 'enemy', i: 2 }, { src: 'enemy', i: 3 }, { src: 'enemy', i: 4 }] : []) });
+}
+function _testGetMoveCells(name) {
+  const u = units.find(u => u.name === name && u.hp > 0);
+  return u ? getMoveCells(u) : [];
+}
+
 // ===== Public API =====
 return {
   startMove, endTurn, skipUnit, castSkill, restart, closeOverlay,
@@ -2872,5 +3270,9 @@ return {
   renderEquipment, setEquipment, renderBonds, deepenBond, startSideStory, showSideStories, startHidden, showHidden, _state, _perf, evaluateSideScore,
   predictOutcome, updateBattlePrediction, showChoice, chooseOption,
   getEndingId, _testSetUnitPos, _testKillEnemies, counterMult,
+  renderClassChange, promoteUnit, _testSetGrowth,
+  // 方向5 地图系统升级：地形系统公共 API（供 UI/测试复用）
+  parseMapTiles, setActiveTerrain, getTileCost, isPassable, isCoverAt, isHighAt, getTileHazardDmg,
+  _testStartMapById, _testGetMoveCells,
 };
 })();

@@ -2,6 +2,43 @@
 
 > ⚠️ **模型切换声明（2026-07-07 11:41）**：项目已从"三阶段→RELEASED→待命"模型切换为**方向驱动（Direction-Driven）**模型。D18（RELEASED/待命）已作废，代以 D20。**不再有"待命"状态**——每次调用必须在 5 个开发方向（核心玩法／内容扩建／系统新创／体验打磨／工程基石）中至少一个方向上产生推进。只有用户 `freeze` 才停止。下方 07:00~12:00 的"待命"历史记录是旧模型的遗留产物，新模型下不再适用。
 
+## 2026-07-09 15:00
+
+15:00:00 @A64(classchange) | JOIN | - | - | - | 读取 LOG/PRODUCT/BLACKBOARD/automation-memory：D20 方向驱动生效；五方向健康度扫描见方向2（内容扩建）外传9篇/隐藏章节三卷已饱和、纯数据扩建空间收窄，方向3 系统新创（装备/羁绊已落地）候选「转职」仍 pending → 本 15:00 轮回归方向3 认领「转职 / 进阶系统（Class Change）」；受方向1 冻结约束以"既有技能重编组 + 数值重分配"实现，零网络零依赖 | 第十五轮自治（07-09 第十五轮）· 方向3 系统新创
+15:00:05 @A64(classchange) | CLAIM | #class-change | - | - | 认领"转职/进阶系统"：CLASS_CHANGE(minLevel+HP/伤害乘数) + CLASS_TITLE(进阶职业名) + PROMOTED_SKILL(重编组既有技能) + createUnit 进阶加成 + 主菜单 renderClassChange/promoteUnit + saveData.classes 存档 + S19 测试 | 写入 In-Progress
+15:00:10 @A64(classchange) | EXECUTE | #class-change | - | - | src/data/classchange.js（新建）：CLASS_CHANGE{minLevel:5,hpMul:1.20,dmgMul:1.10} + CLASS_TITLE(10名玩家单位进阶职业名·原创) + PROMOTED_SKILL(从 SKILL_DEFS 重编组的进阶技能·零方向1 新增) | 文件1/8（数据）
+15:00:15 @A64(classchange) | EXECUTE | #class-change | - | - | src/core/unit-factory.js：buildSkillInstance() 复用基础技能映射 + createUnit 对已转职玩家单位追加重编组技能并叠加进阶数值乘数(HP×1.2/伤害×1.1·与成长/装备加成同向叠加) | 文件2/8（引擎）
+15:00:20 @A64(classchange) | EXECUTE | #class-change | - | - | src/systems/save.js：sanitizeSave 新增 classes 白名单(仅限玩家经典/圣光小队名·夹紧布尔)；src/systems/hooks.js：_state 暴露 classes + _testSetGrowth 测试钩子 | 文件3/8（支撑）
+15:00:25 @A64(classchange) | EXECUTE | #class-change | - | - | src/ui/panels.js：renderClassChange()/promoteUnit()(进阶门槛文案/进阶职业名/解锁技能/持久化) + showMenu 触发渲染；index.html：#classchange-panel 容器与样式 + 菜单分区"转职/进阶" | 文件4-5/8（UI/入口）
+15:00:30 @A64(classchange) | EXECUTE | #class-change | - | - | src/main.js：导出 renderClassChange/promoteUnit + build.js：data/classchange.js 纳入拼接顺序与期望符号(renderClassChange/promoteUnit/_testSetGrowth) | 文件6/8（构建/导出）
+15:00:35 @A64(classchange) | EXECUTE | #class-change | - | - | test/smoke-test.js：新增 S19(门槛拦截Lv.1/进阶HP+伤害提升/技能数+1/解锁「陨石术」等既有技能/未转职单位无副作用/持久化) | 文件7/8（测试）
+15:00:40 @A64(classchange) | EXECUTE | #class-change | - | - | node build.js → SUCCESS(game.js 213.8KB/3090行·dist 5文件 379.87KB)；node --check game.js & dist/game.js → SYNTAX_OK | 构建验证
+15:00:45 @A64(classchange) | CONTENT | #class-change | - | - | 方向3 系统新创·纯数值重分配 + 既有技能重编组(零方向1 新增·balance-safe·默认 classes 空→零加成对 balance-scan 零扰动)；把 PRODUCT 要求的「角色转职」落实为养成里程碑(Lv.5触发)+战前决策+单局推进，拉长游戏总时长 | 方向3:系统新创 | 时长影响:+养成里程碑(升级至Lv.5触发转职)+战前决策(转职配队)+单局时长(进阶单位更肉更痛·推进更稳)
+15:00:50 @A64(classchange) | DONE | #class-change | - | - | 全测试 smoke(189/0·+16 S19)/status-effects(16/0)/subsystems(23/0)/lore(9/0)/perf(8/0)/balance-scan(梯度单调·战役6/6/6·遭遇98/33/2% 困难最难) 全绿无回归；零网络零依赖 | 文件8/8 + build
+
+## 2026-07-09 14:00
+
+14:00:00 @A63(content6) | JOIN      | - | - | - | 读取 LOG/PRODUCT/BLACKBOARD/automation-memory：D20 方向驱动生效；五方向健康度扫描见方向2（内容扩建）仍为最高优先级，外传 7 篇已就绪、隐藏章节三卷(8篇)已饱和；本 14:00 轮回归方向2 认领「外传八/外传九 + 全新游民阵营」内容扩建；零网络零依赖 | 第十四轮自治（07-09 第十四轮）· 方向2 内容扩建
+14:00:05 @A63(content6) | CLAIM     | #sidestory-dust | - | - | 认领"外传八·灰烬集市 + 外传九·潮汐圣龛"：1 新阵营(噬尘游民 dust 拾荒商队) + 3 新敌方单位 + 2 新地图(灰烬集市/潮汐圣龛) + 2 外传(原创叙事) | 写入 In-Progress
+14:00:10 @A63(content6) | EXECUTE   | #sidestory-dust | - | - | src/config/difficulty.js：FACTIONS +3(注册 rust/construct/dust 此前未登记、AI 默认 aggressive 现显式标注·行为与默认一致 balance-safe) | 文件1/4
+14:00:15 @A63(content6) | EXECUTE   | #sidestory-dust | - | - | src/data/units.js：ENEMY_UNITS +3(沙掠者·卡兹 dust/warrior · 风语者·希瓦 dust/archer · 烬卜师·摩恩 dust/mage) 复用既有技能 id(零方向1 新增；索引 38/39/40) | 文件2/4
+14:00:20 @A63(content6) | EXECUTE   | #sidestory-dust | - | - | src/data/campaign.js：MAPS +2(灰烬集市 map28 biome volcano / 潮汐圣龛 map29 biome ruins) + SIDE_STORIES 7→9 篇(外传八·灰烬集市 map28 / 外传九·潮汐圣龛 map29) 复用歼灭全敌胜利条件(零方向1 引擎改动·balance-safe) | 文件3/4
+14:00:25 @A63(content6) | EXECUTE   | #sidestory-dust | - | - | test/smoke-test.js：新增 S18 回归测试(外传八/九·噬尘游民 菜单渲染含「外传八/九」/5v5 部署/含 dust 阵营敌方/通关闭环 sideCleared[7][8]+gameOver) | 文件4/4
+14:00:30 @A63(content6) | EXECUTE   | #sidestory-dust | - | - | node build.js → SUCCESS(game.js 206.5KB/2951行·dist 5文件 371.58KB)；node --check game.js & dist/game.js → SYNTAX_OK | 构建验证
+14:00:35 @A63(content6) | CONTENT   | #sidestory-dust | - | - | 纯数据驱动、复用歼灭全敌胜利条件、零方向1 新增、balance-safe；刻意不新增 WORLD_REGIONS 条目避免破坏 subsystems.test S2 的 8 区域/18章硬断言；外传数 7→9 篇、新阵营 1 个(dust)、新敌方单位 3 名、新地图 2 张 | 方向2:内容扩建 | 时长影响:+6~10分钟/轮(外传 7→9篇·独立可重玩闭环·主菜单外传入口随时进入)
+14:00:40 @A63(content6) | DONE      | #sidestory-dust | - | - | 全测试 smoke(173/0·+20 S18)/status-effects(16/0)/subsystems(23/0)/lore(9/0)/perf(8/0)/balance-scan(梯度单调·战役6/6/6·遭遇98/33/2% 困难最难) 全绿无回归；零网络零依赖 | 文件4/4 + build
+
+## 2026-07-09 13:00
+
+13:00:00 @A62(content5) | JOIN | - | - | - | 读取 LOG/PRODUCT/BLACKBOARD/automation-memory：D20 方向驱动生效；五方向健康度扫描见方向2（内容扩建）仍为最高优先级，12:00 轮已落地方向3 羁绊系统、方向2 隐藏章节三卷(8篇)已近饱和；本 13:00 轮回归方向2 认领「外传六/外传七 + 两个全新凡人/灵械阵营」内容扩建；零网络零依赖 | 第十三轮自治（07-09 第十三轮）· 方向2 内容扩建
+13:00:05 @A62(content5) | CLAIM | #sidestory-rust-construct | - | - | 认领"外传六·锈铁商道 + 外传七·星尘观测台"：2 新阵营(锈铁佣兵团 rust 凡人武装 / 灰烬构装体 construct 失控灵械) + 6 新敌方单位 + 2 新地图(锈铁商道/星尘观测台) + 2 外传(原创叙事) + 2 百科条目(锈铁佣兵团/灰烬构装体) | 写入 In-Progress
+13:00:10 @A62(content5) | EXECUTE | #sidestory-rust-construct | - | - | src/data/units.js：ENEMY_UNITS +6(锈铁佣兵队长·加尔 rust/warrior · 锈铁弩手·薇拉 rust/archer · 锈铁工兵·铎恩 rust/mage · 构装守卫·泰坦 construct/warrior · 织雷机偶·瑟拉 construct/archer · 熔心核心·伊格 construct/mage) 复用既有技能 id(零方向1 新增) | 文件1/4
+13:00:15 @A62(content5) | EXECUTE | #sidestory-rust-construct | - | - | src/data/campaign.js：MAPS +2(锈铁商道 map26 biome snow / 星尘观测台 map27 biome ruins) + SIDE_STORIES 5→7 篇(外传六·锈铁商道 map26 / 外传七·星尘观测台 map27) 复用歼灭全敌胜利条件(零方向1 引擎改动·balance-safe) | 文件2/4
+13:00:20 @A62(content5) | EXECUTE | #sidestory-rust-construct | - | - | src/data/lore.js：WORLD_LORE +2(锈铁佣兵团/灰烬构装体→43篇) 纯数据扩容 | 文件3/4
+13:00:25 @A62(content5) | EXECUTE | #sidestory-rust-construct | - | - | node build.js → SUCCESS(game.js 201.7KB/2915行·dist 5文件 366.76KB)；node --check game.js & dist/game.js → SYNTAX_OK | 构建验证
+13:00:30 @A62(content5) | CONTENT | #sidestory-rust-construct | - | - | 纯数据驱动、复用歼灭全敌胜利条件、零方向1 新增、balance-safe；刻意不新增 WORLD_REGIONS 条目避免破坏 subsystems.test S2 的 8 区域硬断言；外传数 5→7 篇、新阵营 2 个、新敌方单位 6 名、新地图 2 张 | 方向2:内容扩建 | 时长影响:+8~14分钟/轮(外传 5→7篇·独立可重玩闭环·主菜单外传入口随时进入)
+13:00:35 @A62(content5) | DONE | #sidestory-rust-construct | - | - | 全测试 smoke(153/0·无回归)/status-effects(16/0)/subsystems(23/0)/lore(9/0)/perf(8/0)/balance-scan(梯度单调·战役6/6/6·遭遇100/35/0% 困难最难) 全绿无回归；零网络零依赖 | 文件4/4 + build
+
 ## 2026-07-09 12:00
 
 12:40:00 @A61(bond)    | JOIN      | - | - | - | 读取 LOG/PRODUCT/BLACKBOARD/automation-memory：D20 方向驱动生效；五方向健康度扫描见方向2（内容扩建）仍为最高优先级，但 09~11 三轮连续落地隐藏章节三卷（蚀教/回响/溯光者）已近饱和、易陷 clone+rename；方向3 系统新创候选中「装备」已落地、「转职」受方向1 冻结约束、「好感度」可行 → 本 12:00 轮认领方向3 落地「羁绊 / 好感度系统（Bond/Synergy）」；把支援对话落实为可成长战前联动数值、拉长单局时长；零网络零依赖 | 第十二轮自治（07-09 第十二轮）· 方向3 系统新创

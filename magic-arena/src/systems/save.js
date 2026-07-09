@@ -70,6 +70,16 @@ function sanitizeSave(obj) {
       if (Number.isFinite(v) && v >= 0 && v <= 3) base.bonds[k] = v;
     }
   } else { base.bonds = {}; }
+  if (obj && typeof obj.classes === 'object' && obj.classes) {
+    base.classes = {};
+    const validUnits = new Set();
+    PLAYER_UNITS.forEach(u => validUnits.add(u.name));
+    LIGHT_SQUAD.forEach(u => validUnits.add(u.name));
+    for (const k of Object.keys(obj.classes)) {
+      if (!validUnits.has(k)) continue;
+      base.classes[k] = !!obj.classes[k];
+    }
+  } else { base.classes = {}; }
   if (obj && typeof obj.sideCleared === 'object' && obj.sideCleared) {
     base.sideCleared = {};
     for (const k of Object.keys(obj.sideCleared)) {

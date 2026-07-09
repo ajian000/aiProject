@@ -40,6 +40,27 @@ function buildStaticLayer() {
       c.font = 'bold 13px sans-serif';
       c.fillText('危', co.gx * CELL + CELL / 2, co.gy * CELL + CELL / 2);
     });
+    // 方向5 地图系统升级：地形矩阵渲染（水域/熔岩/悬崖/树林/矮墙/高地/沼泽/门户/可破坏墙）
+    if (activeTerrain) {
+      for (let y = 0; y < GRID_H; y++) {
+        for (let x = 0; x < GRID_W; x++) {
+          const t = activeTerrain[y][x];
+          if (t.key === '.' || t.key === 'P' || t.key === 'E') continue; // 平地/部署区不绘制
+          const bg = TILE_BG[t.key];
+          if (bg) {
+            c.fillStyle = bg;
+            c.fillRect(x * CELL + 1, y * CELL + 1, CELL - 2, CELL - 2);
+          }
+          if (t.glyph) {
+            c.fillStyle = (TILE_FG[t.key] || '#fff');
+            c.font = 'bold 13px sans-serif';
+            c.textAlign = 'center';
+            c.textBaseline = 'middle';
+            c.fillText(t.glyph, x * CELL + CELL / 2, y * CELL + CELL / 2);
+          }
+        }
+      }
+    }
   }
   staticMapId = currentMap ? currentMap.id : null;
   staticRebuilds++;

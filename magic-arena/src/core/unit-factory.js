@@ -2,10 +2,33 @@
 // Core: Unit Factory — 创建单位（含难度缩放 + 成长 + 装备）
 // ============================================================
 
+// 由 SKILL_DEFS 构建一个技能实例（与 createUnit 基础技能同一映射规则）
+function buildSkillInstance(sk, dmgMul) {
+  const base = SKILL_DEFS[sk];
+  return {
+    ...base,
+    key: sk, cd: 0,
+    dmg: Math.round(base.dmg * dmgMul),
+    burnDmg: base.burnDmg ? Math.round(base.burnDmg * dmgMul) : 0,
+    poisonDmg: base.poisonDmg ? Math.round(base.poisonDmg * dmgMul) : 0,
+  };
+}
+
 function createUnit(def, team, gx, gy) {
   const d = DIFFICULTY[difficulty] || DIFFICULTY.normal;
   const hpMul = team === 'enemy' ? d.hpMul : 1;
   const dmgMul = team === 'enemy' ? d.dmgMul : 1;
+  // 基础技能列表
+  const skills = def.skills.map(s => buildSkillInstance(s, dmgMul));
+  // 转职系统（方向3 系统新创）：已转职玩家单位追加 1 个「既有技能」（从 SKILL_DEFS 重编组，
+  // 不定义任何新技能/状态/机制，方向1 冻结零触碰）。该技能随后一并享受成长/装备加成。
+  const promoted = !!(team === 'player' && saveData.classes && saveData.classes[def.name]);
+  if (promoted) {
+    const pk = PROMOTED_SKILL[def.name];
+    if (pk && SKILL_DEFS[pk] && !def.skills.includes(pk)) {
+      skills.push(buildSkillInstance(pk, dmgMul));
+    }
+  }
   const maxHp = Math.max(1, Math.round(def.maxHp * hpMul));
   const u = {
     id: `${team}_${gx}_${gy}`,
@@ -16,16 +39,7 @@ function createUnit(def, team, gx, gy) {
     maxHp,
     hp: maxHp,
     moveRange: def.moveRange,
-    skills: def.skills.map(s => {
-      const base = SKILL_DEFS[s];
-      return {
-        ...base,
-        key: s, cd: 0,
-        dmg: Math.round(base.dmg * dmgMul),
-        burnDmg: base.burnDmg ? Math.round(base.burnDmg * dmgMul) : 0,
-        poisonDmg: base.poisonDmg ? Math.round(base.poisonDmg * dmgMul) : 0,
-      };
-    }),
+    skills,
     gx, gy,
     color: def.color,
     unitType: def.unitType || null,
@@ -76,6 +90,17 @@ function createUnit(def, team, gx, gy) {
         });
       }
     }
+  }
+  // 转职系统（方向3 系统新创）：已转职玩家单位叠加进阶数值乘数（HP/伤害）。
+  // 仅作用于玩家单位；默认 classes 为空（既有测试与平衡自检）时无任何加成。
+  if (promoted) {
+    u.maxHp = Math.max(1, Math.round(u.maxHp * CLASS_CHANGE.hpMul));
+    u.hp = u.maxHp;
+    u.skills.forEach(s => {
+      s.dmg = Math.round(s.dmg * CLASS_CHANGE.dmgMul);
+      if (s.burnDmg) s.burnDmg = Math.round(s.burnDmg * CLASS_CHANGE.dmgMul);
+      if (s.poisonDmg) s.poisonDmg = Math.round(s.poisonDmg * CLASS_CHANGE.dmgMul);
+    });
   }
   return u;
 }

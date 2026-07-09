@@ -24,6 +24,7 @@ function showMenu() {
     renderCodex();
     renderEquipment();
     renderBonds();
+    renderClassChange();
     menu.style.display = 'flex';
   }
   const wm = document.getElementById('world-map');
@@ -424,6 +425,50 @@ function unlockAchievement(id) {
   saveSave();
   addLog(`🏆 解锁成就「${def.name}」：${def.desc}`, 'info');
   renderAchievements();
+}
+
+// ---- 转职 / 进阶系统（方向3 系统新创 · Class Change）----
+function renderClassChange() {
+  const panel = document.getElementById('classchange-panel');
+  if (!panel) return;
+  const squad = PLAYER_SQUADS[selectedPlayerFaction] || PLAYER_UNITS;
+  const rows = squad.map(u => {
+    const lv = (saveData.growth && saveData.growth[u.name] && saveData.growth[u.name].level) || 1;
+    const promoted = !!(saveData.classes && saveData.classes[u.name]);
+    const titled = CLASS_TITLE[u.name] || '进阶';
+    const nextSkill = PROMOTED_SKILL[u.name];
+    const nextSkillName = (nextSkill && SKILL_DEFS[nextSkill]) ? SKILL_DEFS[nextSkill].name : '';
+    const canPromote = !promoted && lv >= CLASS_CHANGE.minLevel;
+    const status = promoted
+      ? `已转职 · ${titled}`
+      : (lv >= CLASS_CHANGE.minLevel ? '可转职' : `Lv.${lv} / 需 Lv.${CLASS_CHANGE.minLevel}`);
+    const action = canPromote
+      ? `<button class="cc-btn" onclick="Game.promoteUnit('${u.name}')">转职 → ${titled}</button>`
+      : `<span class="cc-locked">${status}</span>`;
+    const meta = promoted
+      ? `Lv.${lv} · 进阶后 HP×${CLASS_CHANGE.hpMul} 伤害×${CLASS_CHANGE.dmgMul}${nextSkillName ? ' · 已解锁「' + nextSkillName + '」' : ''}`
+      : `Lv.${lv} · 进阶后 HP×${CLASS_CHANGE.hpMul} 伤害×${CLASS_CHANGE.dmgMul}${nextSkillName ? ' · 解锁「' + nextSkillName + '」' : ''}`;
+    return `<div class="cc-unit">
+      <div class="cc-name">${u.name}${promoted ? ' <span class="cc-tag">★ ' + titled + '</span>' : ''}</div>
+      <div class="cc-meta">${meta}</div>
+      <div class="cc-row">${action}</div>
+    </div>`;
+  }).join('');
+  panel.innerHTML = `<div class="cc-grid">${rows}</div>`;
+}
+
+function promoteUnit(name) {
+  const squad = PLAYER_SQUADS[selectedPlayerFaction] || PLAYER_UNITS;
+  if (!squad.some(u => u.name === name)) return;
+  const lv = (saveData.growth && saveData.growth[name] && saveData.growth[name].level) || 1;
+  if (lv < CLASS_CHANGE.minLevel) return;            // 成长等级不足，不可转职
+  if (!saveData.classes) saveData.classes = {};
+  if (saveData.classes[name]) return;                // 已转职，不可重复
+  saveData.classes[name] = true;
+  renderClassChange();
+  const titled = CLASS_TITLE[name] || '进阶';
+  addLog(`${name} 完成转职 · ${titled}`, 'info');
+  try { saveSave(); } catch (e) { /* ignore */ }
 }
 
 // ---- 弹窗系统 ----

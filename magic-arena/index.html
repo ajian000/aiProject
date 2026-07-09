@@ -172,6 +172,17 @@ canvas { border-radius: 8px; cursor: pointer; }
 .bond-btn { padding: 4px 8px; background: #533483; border: 1px solid #7b4fa0; border-radius: 6px; color: #fff; cursor: pointer; font-size: 11px; }
 .bond-btn:hover { background: #7b4fa0; }
 .bond-max { color: #69f0ae; font-size: 11px; }
+/* 转职 / 进阶系统（方向3 系统新创 · Class Change） */
+#classchange-panel { background: #0f3460; border-radius: 8px; padding: 10px 12px; margin: 10px 0; text-align: left; font-size: 12px; max-height: 240px; overflow-y: auto; }
+.cc-grid { display: flex; flex-direction: column; gap: 8px; }
+.cc-unit { background: #16213e; border: 1px solid #533483; border-radius: 8px; padding: 8px 10px; }
+.cc-name { color: #f0c27f; font-weight: bold; }
+.cc-tag { color: #1a1a2e; background: #ffd54f; border-radius: 4px; padding: 0 5px; font-size: 10px; margin-left: 4px; }
+.cc-meta { color: #c8c8d0; font-size: 11px; line-height: 1.5; margin: 3px 0; }
+.cc-row { display: flex; gap: 6px; align-items: center; }
+.cc-btn { padding: 4px 8px; background: #533483; border: 1px solid #7b4fa0; border-radius: 6px; color: #fff; cursor: pointer; font-size: 11px; }
+.cc-btn:hover { background: #7b4fa0; }
+.cc-locked { color: #9e9e9e; font-size: 11px; }
 </style>
 </head>
 <body>
@@ -228,6 +239,8 @@ canvas { border-radius: 8px; cursor: pointer; }
     <div id="menu-equipment"></div>
     <div id="menu-section-title">羁绊 / 好感度（加深关系 · 战前部署联动加成）</div>
     <div id="bonds-panel"></div>
+    <div id="menu-section-title">转职 / 进阶（养成里程碑 · 重编组技能 + 数值提升）</div>
+    <div id="classchange-panel"></div>
     <div id="menu-section-title">成就</div>
     <div id="menu-achievements"></div>
     <div id="menu-section-title">单位图鉴（全单位档案）</div>

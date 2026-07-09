@@ -61,6 +61,18 @@ const ENEMY_UNITS = [
   { name: '溯光咏史·琉恩', maxHp: 72, moveRange: 2, faction: 'primordial', unitType: 'mage', skills: ['shadowbolt', 'burn', 'drain'], color: '#ffe0b2' },
   { name: '溯光守垣·阿戈', maxHp: 94, moveRange: 2, faction: 'primordial', unitType: 'warrior', skills: ['fireball', 'stun', 'taunt'], color: '#ffcc80' },
   { name: '溯光游隼·薇恩', maxHp: 68, moveRange: 3, faction: 'primordial', unitType: 'archer', skills: ['silence', 'lightning', 'blind'], color: '#ffe082' },
+  // —— 外传六/外传七（方向2 内容扩建）新增敌方单位：锈铁佣兵团（无灵脉的凡人武装，靠灵械与弩炮据守商道）——
+  { name: '锈铁佣兵队长·加尔', maxHp: 90, moveRange: 2, faction: 'rust', unitType: 'warrior', skills: ['fireball', 'stun', 'taunt'], color: '#bcaaa4' },
+  { name: '锈铁弩手·薇拉', maxHp: 66, moveRange: 3, faction: 'rust', unitType: 'archer', skills: ['lightning', 'silence', 'blind'], color: '#a1887f' },
+  { name: '锈铁工兵·铎恩', maxHp: 78, moveRange: 2, faction: 'rust', unitType: 'mage', skills: ['meteor', 'poison', 'drain'], color: '#8d6e63' },
+  // —— 外传七（方向2 内容扩建）新增敌方单位：灰烬构装体（玄雷塔失控灵械，核心被裂缝之外低语改写）——
+  { name: '构装守卫·泰坦', maxHp: 95, moveRange: 2, faction: 'construct', unitType: 'warrior', skills: ['fireball', 'stun', 'taunt'], color: '#90a4ae' },
+  { name: '织雷机偶·瑟拉', maxHp: 68, moveRange: 3, faction: 'construct', unitType: 'archer', skills: ['lightning', 'silence', 'blind'], color: '#78909c' },
+  { name: '熔心核心·伊格', maxHp: 72, moveRange: 2, faction: 'construct', unitType: 'mage', skills: ['meteor', 'burn', 'drain'], color: '#607d8b' },
+  // —— 外传八/外传九（方向2 内容扩建）新增敌方单位：噬尘游民（灵脉危机后游荡于废墟与灰烬之间的拾荒商队，靠倒卖灵械与记忆维生）——
+  { name: '沙掠者·卡兹', maxHp: 88, moveRange: 2, faction: 'dust', unitType: 'warrior', skills: ['fireball', 'stun', 'taunt'], color: '#c0a16b' },
+  { name: '风语者·希瓦', maxHp: 66, moveRange: 3, faction: 'dust', unitType: 'archer', skills: ['lightning', 'silence', 'blind'], color: '#d7c4a1' },
+  { name: '烬卜师·摩恩', maxHp: 72, moveRange: 2, faction: 'dust', unitType: 'mage', skills: ['meteor', 'poison', 'drain'], color: '#a8956e' },
 ];
 
 const BOSS_UNITS = [

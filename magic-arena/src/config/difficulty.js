@@ -13,6 +13,12 @@ const FACTIONS = {
   eclipse:    { name: '蚀教', color: '#ab47bc', aiStyle: 'aggressive' },
   echo:       { name: '回响', color: '#4dd0e1', aiStyle: 'aggressive' },
   primordial: { name: '溯光', color: '#ffd180', aiStyle: 'aggressive' },
+  // —— 外传阵营（方向2 内容扩建 · 外传六/七/本轮回合登场）——
+  // rust=锈铁佣兵（无灵脉的凡人武装）/ construct=灰烬构装体（失控灵械）/ dust=噬尘游民（游荡废墟的拾荒商队）
+  // 三者此前未注册时 AI 默认 aggressive；此处显式登记，行为与既有默认完全一致（balance-safe）。
+  rust:       { name: '锈铁佣兵', color: '#a1887f', aiStyle: 'aggressive' },
+  construct:  { name: '灰烬构装', color: '#78909c', aiStyle: 'aggressive' },
+  dust:       { name: '噬尘游民', color: '#c0a16b', aiStyle: 'aggressive' },
 };
 
 const DIFFICULTY = {

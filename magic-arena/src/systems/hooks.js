@@ -20,8 +20,11 @@ function _state() {
     equip: saveData.equip || {},
     equipment: EQUIPMENT,
     bonds: saveData.bonds || {},
+    classes: saveData.classes || {},
     alignmentScore: saveData.alignmentScore || 0,
     currentMap: currentMap ? { id: currentMap.id, name: currentMap.name, cover: currentMap.cover, hazard: currentMap.hazard } : null,
+    // 方向5 地图系统升级：地形矩阵快照（行拼接，便于纯 Node 断言校验）
+    terrainInfo: activeTerrain ? activeTerrain.map(r => r.map(t => t.key).join('')).join('/') : null,
     saveData: { ...saveData },
     floaters: floaters.map(f => ({ gx: f.gx, gy: f.gy, text: f.text, kind: f.kind, life: f.life })),
     logs: logs.map(l => ({ text: l.text, type: l.type })),
@@ -49,4 +52,10 @@ function _state() {
   // 测试辅助：将全部敌方单位 HP 置 0（仅测试用，用于确定性触发胜利分支）
   function _testKillEnemies() {
     units.forEach(u => { if (u.team === 'enemy') u.hp = 0; });
+  }
+
+  // 测试辅助：设定某单位的角色成长等级（仅测试用，用于校验转职门槛逻辑）
+  function _testSetGrowth(name, level) {
+    if (!saveData.growth) saveData.growth = {};
+    saveData.growth[name] = { exp: 0, level: Math.max(1, Math.floor(Number(level) || 1)) };
   }

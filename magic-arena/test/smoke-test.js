@@ -728,6 +728,109 @@ try {
 }
 assert(s17ok, 'S17 羁绊 / 好感度系统无异常');
 
+// 场景 S18：外传章节扩容（外传八 · 灰烬集市 / 外传九 · 潮汐圣龛 · 方向2 内容扩建 · 本轮回合落地）
+// 锁定核心契约（纯内容 + 复用既有"歼灭全部敌人"胜利条件、零方向1 引擎改动、balance-safe）：
+//  - showSideStories() 渲染外传列表（含新增「外传八/外传九」）
+//  - startSideStory(7)/(8) 切 gameMode='sidestory'、按 5v5 部署、展示原创开场
+//  - 胜利分支：标记 saveData.sideCleared[7]/[8] 并进入 gameOver
+console.log('[S18] 外传章节扩容（外传八/九 · 噬尘游民）列表/开场/战斗/通关闭环');
+let s18ok = true;
+try {
+  assert(typeof Game.showSideStories === 'function', 'S18 showSideStories 已暴露供回归断言');
+  assert(typeof Game.startSideStory === 'function', 'S18 startSideStory 已暴露供回归断言');
+  assert(typeof Game._testKillEnemies === 'function', 'S18 _testKillEnemies 已暴露供回归断言');
+  Game.showSideStories();
+  const lp18 = getEl('lore-panel');
+  assert(lp18.innerHTML.indexOf('外传八') >= 0, 'S18 外传列表含新增「外传八 · 灰烬集市」');
+  assert(lp18.innerHTML.indexOf('外传九') >= 0, 'S18 外传列表含新增「外传九 · 潮汐圣龛」');
+  // 外传八 · 灰烬集市
+  Game.startSideStory(7);
+  const st8 = Game._state();
+  assert(st8.gameMode === 'sidestory', 'S18 外传八 gameMode 切换为 sidestory');
+  assert(st8.currentSideStory === 7, 'S18 外传八 currentSideStory 记录索引 7');
+  const p8 = st8.units.filter(u => u.team === 'player' && u.hp > 0);
+  const e8 = st8.units.filter(u => u.team === 'enemy' && u.hp > 0);
+  assert(p8.length === 5, 'S18 外传八 玩家小队 5 人部署（实际 ' + p8.length + '）');
+  assert(e8.length === 5, 'S18 外传八 敌方 5 人部署（实际 ' + e8.length + '）');
+  assert(e8.some(u => u.faction === 'dust'), 'S18 外传八 含新阵营「噬尘游民」敌方单位');
+  Game._testKillEnemies();
+  Game.endTurn();
+  const st8b = Game._state();
+  assert((st8b.saveData.sideCleared && st8b.saveData.sideCleared[7]) === true, 'S18 外传八 通关后 sideCleared[7] 持久化标记');
+  assert(st8b.phase === 'gameOver', 'S18 外传八 胜利后进入 gameOver 阶段');
+  // 外传九 · 潮汐圣龛
+  Game.startSideStory(8);
+  const st9 = Game._state();
+  assert(st9.gameMode === 'sidestory', 'S18 外传九 gameMode 切换为 sidestory');
+  assert(st9.currentSideStory === 8, 'S18 外传九 currentSideStory 记录索引 8');
+  const p9 = st9.units.filter(u => u.team === 'player' && u.hp > 0);
+  const e9 = st9.units.filter(u => u.team === 'enemy' && u.hp > 0);
+  assert(p9.length === 5, 'S18 外传九 玩家小队 5 人部署（实际 ' + p9.length + '）');
+  assert(e9.length === 5, 'S18 外传九 敌方 5 人部署（实际 ' + e9.length + '）');
+  assert(e9.some(u => u.faction === 'dust'), 'S18 外传九 含新阵营「噬尘游民」敌方单位');
+  Game._testKillEnemies();
+  Game.endTurn();
+  const st9b = Game._state();
+  assert((st9b.saveData.sideCleared && st9b.saveData.sideCleared[8]) === true, 'S18 外传九 通关后 sideCleared[8] 持久化标记');
+  assert(st9b.phase === 'gameOver', 'S18 外传九 胜利后进入 gameOver 阶段');
+} catch (e) {
+  s18ok = false;
+  failures.push('S18 外传章节扩容断言抛异常: ' + e.message + '\n' + e.stack);
+}
+assert(s18ok, 'S18 外传章节扩容（外传八/九 · 噬尘游民）无异常');
+
+// 场景 S19：转职 / 进阶系统（Class Change · 方向3 系统新创 · 本轮回合落地）
+// 锁定核心契约（纯数值重分配 + 既有技能重编组、零方向1 引擎改动、balance-safe、默认无加成）：
+//  - promoteUnit(name) 仅当角色成长等级 ≥ minLevel(5) 且未转职时生效，持久化于 saveData.classes
+//  - 已转职玩家单位在部署时获得进阶数值乘数（HP×1.2 / 伤害×1.1）并解锁 1 个「既有技能」（重编组）
+//  - 等级不足 / 已转职：promoteUnit 被正确保护（不越界、不重复）
+//  - 默认（classes 为空）部署无任何加成（balance-safe，与历史测试基线一致）
+console.log('[S19] 转职 / 进阶系统（Class Change）门槛/加成/技能重编组/持久化');
+let s19ok = true;
+try {
+  assert(typeof Game.promoteUnit === 'function', 'S19 promoteUnit 已暴露供回归断言');
+  assert(typeof Game.renderClassChange === 'function', 'S19 renderClassChange 已暴露供回归断言');
+  assert(typeof Game._testSetGrowth === 'function', 'S19 _testSetGrowth 测试钩子已暴露');
+  assert(typeof Game._state().classes !== 'undefined', 'S19 _state 暴露 classes 字段');
+  // 基线：默认无转职 → 部署后玩家单位 maxHp/技能数等于定义值（无进阶加成）
+  Game.setDifficulty('normal');
+  Game.startCampaign(1);
+  const baseA = Game._state().units.find(u => u.team === 'player' && u.name === '炎法师·艾拉');
+  const baseMaxHp = baseA.maxHp;
+  const baseSkillCount = baseA.skills.length;
+  const baseFireballDmg = baseA.skills.find(s => s.key === 'fireball').dmg;
+  assert(baseA.skills.every(s => s.key !== 'meteor'), 'S19 基线：炎法师·艾拉 进阶技能「陨石术」尚未解锁');
+  // 越界保护：等级不足（Lv.1）时 promoteUnit 被忽略
+  Game.promoteUnit('雷法师·特斯拉');
+  assert(Game._state().classes['雷法师·特斯拉'] !== true, 'S19 等级不足（Lv.1）时 promoteUnit 被拦截');
+  // 设定炎法师·艾拉 成长至 Lv.5，触发转职门槛
+  Game._testSetGrowth('炎法师·艾拉', 5);
+  Game.promoteUnit('炎法师·艾拉');
+  assert(Game._state().classes['炎法师·艾拉'] === true, 'S19 达到门槛后 promoteUnit 生效（classes=true）');
+  // 幂等保护：已转职不可重复转职
+  Game.promoteUnit('炎法师·艾拉');
+  assert(Game._state().classes['炎法师·艾拉'] === true, 'S19 已转职单位不会被重复转职');
+  // 重开战役：炎法师·艾拉 进阶为「炎息术师」，HP×1.2 / 伤害×1.1 + 解锁「陨石术」
+  Game.startCampaign(1);
+  const advA = Game._state().units.find(u => u.team === 'player' && u.name === '炎法师·艾拉');
+  assert(advA.maxHp > baseMaxHp, 'S19 进阶后 maxHp 提升（' + baseMaxHp + ' → ' + advA.maxHp + '）');
+  assert(advA.skills.length === baseSkillCount + 1, 'S19 进阶后技能数 +1（重编组既有技能，' + baseSkillCount + ' → ' + advA.skills.length + '）');
+  assert(advA.skills.some(s => s.key === 'meteor'), 'S19 进阶后解锁「陨石术」（既有技能重编组，零方向1 新增）');
+  const advFireball = advA.skills.find(s => s.key === 'fireball').dmg;
+  assert(advFireball > baseFireballDmg, 'S19 进阶后技能伤害提升（' + baseFireballDmg + ' → ' + advFireball + '）');
+  // 未转职单位不受影响（等级不足时的 promoteUnit 被拦截，classes 仍为空 → 平衡自检基线保持）
+  const other = Game._state().units.find(u => u.team === 'player' && u.name === '雷法师·特斯拉');
+  assert(Game._state().classes['雷法师·特斯拉'] !== true, 'S19 未转职单位保持未转职（无越界副作用）');
+  assert(other.skills.length === 3, 'S19 未转职单位技能数保持基础值（无副作用）');
+  // 持久化：经 localStorage 回读后仍为 true（sanitizeSave 白名单 classes）
+  const reloaded = Game._state().saveData.classes['炎法师·艾拉'];
+  assert(reloaded === true, 'S19 转职状态经存档持久化（回读=true）');
+} catch (e) {
+  s19ok = false;
+  failures.push('S19 转职系统断言抛异常: ' + e.message + '\n' + e.stack);
+}
+assert(s19ok, 'S19 转职 / 进阶系统无异常');
+
 console.log('\n=== 测试结果 ===');
 console.log('通过: ' + pass + '  失败: ' + fail);
 if (fail > 0) {

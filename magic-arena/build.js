@@ -24,6 +24,9 @@ const CONCAT_ORDER = [
   'config/constants.js',
   'config/difficulty.js',
 
+  // Core — 地形矩阵系统（方向5 地图系统升级 · 必须在 utils/combat/turn 之前定义 TERRAIN）
+  'core/terrain.js',
+
   // Data
   'data/skills.js',
   'data/units.js',
@@ -31,6 +34,7 @@ const CONCAT_ORDER = [
   'data/campaign.js',
   'data/lore.js',
   'data/bonds.js',
+  'data/classchange.js',
 
   // Core — 运行时状态与战斗逻辑
   'core/state.js',
@@ -83,6 +87,9 @@ function buildGameJs() {
     'showMenu', 'showWorldMap', 'showLore', 'renderLore',
     'setDifficulty', 'setPlayerFaction', 'renderCodex',
     'renderEquipment', 'setEquipment', 'renderBonds', 'deepenBond', '_state', '_perf',
+    'renderClassChange', 'promoteUnit', '_testSetGrowth',
+    'parseMapTiles', 'getTileCost', 'isPassable', 'isCoverAt', 'isHighAt', 'getTileHazardDmg', 'setActiveTerrain',
+    '_testStartMapById', '_testGetMoveCells',
     'evaluateSideScore', 'predictOutcome', 'updateBattlePrediction',
     'showChoice', 'chooseOption', 'getEndingId',
   ];

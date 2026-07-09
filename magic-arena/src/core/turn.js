@@ -4,6 +4,7 @@
 
 function startBattle(setup) {
   currentMap = MAPS[setup.map];
+  setActiveTerrain(parseMapTiles(currentMap)); // 方向5 地图系统升级：加载当前地图地形矩阵（旧地图自动兼容）
   units = [];
   selectedUnit = null;
   phase = 'selectUnit';
@@ -75,9 +76,10 @@ function nextTurn() {
     if (u.shieldTurns > 0) { u.shieldTurns--; if (u.shieldTurns === 0) { u.shield = 0; addLog(`${u.name} 护盾消散`, 'info'); } }
     if (u.empowerTurns > 0) { u.empowerTurns--; if (u.empowerTurns === 0) addLog(`${u.name} 强化解除`, 'info'); }
     if (u.hp > 0 && hazardAt(u.gx, u.gy)) {
-      u.hp -= HAZARD_DMG;
-      pushFloater(u.gx, u.gy, '危' + HAZARD_DMG, 'hazard');
-      addLog(`${u.name} 处于危险格，受到 ${HAZARD_DMG} 点环境伤害`, 'damage');
+      const hd = getTileHazardDmg(u.gx, u.gy);
+      u.hp -= hd;
+      pushFloater(u.gx, u.gy, '危' + hd, 'hazard');
+      addLog(`${u.name} 处于危险格，受到 ${hd} 点环境伤害`, 'damage');
     }
   });
   checkGameEnd();

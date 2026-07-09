@@ -20,6 +20,10 @@ function damageUnit(target, dmg, attacker) {
     pushFloater(target.gx, target.gy, '克制!', 'counter');
   }
   if (coverAt(target.gx, target.gy)) actual = Math.floor(actual * COVER_REDUCE);
+  // 高地加成（方向5 地图系统升级 · 高地系统）：攻击者立于高地且目标不在高地 → 伤害 +20%（高打低）
+  if (attacker && attacker.gx !== undefined && isHighAt(attacker.gx, attacker.gy) && !isHighAt(target.gx, target.gy)) {
+    actual = Math.floor(actual * 1.2);
+  }
   if (target.vulnTurns > 0) actual = Math.floor(actual * (1 + VULN_AMP));
   if (target.shield > 0) {
     const absorbed = Math.min(target.shield, actual);
