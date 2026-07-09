@@ -47,6 +47,26 @@ canvas { border-radius: 8px; cursor: pointer; }
 #overlay-content h2 { color: #f0c27f; font-size: 28px; margin-bottom: 16px; }
 #overlay-content p { margin-bottom: 16px; }
 #overlay-content button { padding: 12px 32px; background: #533483; border: none; border-radius: 8px; color: #fff; cursor: pointer; font-size: 16px; margin: 4px; }
+/* 战斗结算面板（方向4 体验打磨）：胜利/失败主题 + 揭幕动画 + 统计条 */
+#overlay-content.reveal { animation: pop 0.35s ease; }
+#overlay-content.result-win h2 { color: #69f0ae; }
+#overlay-content.result-lose h2 { color: #ff5252; }
+/* 章节剧情叙事（方向2 内容扩建 · 新叙事交互） */
+#overlay-content.story-mode { max-width: 460px; text-align: left; }
+#overlay-content.story-mode h2 { text-align: center; }
+#overlay-content.story-mode #overlay-msg { text-align: left; }
+.story-p { margin: 0 0 12px; line-height: 1.7; color: #e8e8f0; font-size: 14px; text-align: left; }
+@keyframes pop { from { transform: scale(0.85); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+.result-stats { background: rgba(0,0,0,0.25); border-radius: 8px; padding: 12px 14px; margin: 4px 0 16px; text-align: left; font-size: 13px; }
+.rs-row { display: flex; align-items: flex-start; gap: 10px; padding: 4px 0; border-bottom: 1px solid rgba(255,255,255,0.06); }
+.rs-row:last-child { border-bottom: none; }
+.rs-label { color: #a0d0ff; min-width: 64px; flex-shrink: 0; }
+.rs-val { color: #e0e0e0; display: flex; flex-wrap: wrap; gap: 6px; }
+.rs-unit { background: #0f3460; border: 1px solid #533483; border-radius: 6px; padding: 1px 8px; color: #69f0ae; }
+.rs-unit.rs-dead { color: #ff5252; }
+.rs-ach { background: #2a2140; border: 1px solid #7b4fa0; border-radius: 6px; padding: 1px 8px; color: #ffd54f; }
+.rs-muted { color: #6f6f80; }
+.rs-ach-row { align-items: flex-start; }
 #overlay-content button:hover { background: #7b4fa0; }
 #save-info { font-size: 12px; color: #888; padding: 4px 8px; }
 #battle-predict { background: #16213e; border-radius: 8px; padding: 12px; min-height: 96px; }
@@ -83,6 +103,75 @@ canvas { border-radius: 8px; cursor: pointer; }
 .codex-card .codex-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 4px; vertical-align: middle; }
 .codex-card .codex-meta { color: #a0d0ff; font-size: 10px; margin-bottom: 4px; line-height: 1.4; }
 .codex-card .codex-skill { color: #c8c8d0; font-size: 10px; line-height: 1.45; }
+
+/* 世界地图 / 章节选择界面（方向3 系统新创） */
+#world-map { position: fixed; inset: 0; display: none; justify-content: center; align-items: flex-start; background: rgba(10,10,26,0.96); z-index: 50; overflow-y: auto; padding: 24px; }
+#world-map-content { width: 100%; max-width: 720px; text-align: center; color: #e0e0e0; margin: 0 auto; }
+#world-map-content h2 { color: #f0c27f; margin: 4px 0; }
+.wm-sub { color: #a0d0ff; font-size: 13px; margin: 4px 0 8px; }
+.wm-regions { display: flex; flex-direction: column; gap: 14px; margin: 12px 0; }
+.wm-region { background: #16213e; border: 1px solid #533483; border-radius: 12px; padding: 14px 16px; text-align: left; }
+.wm-region.closed { opacity: 0.6; }
+.wm-region-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+.wm-region-name { font-weight: bold; color: #f0c27f; font-size: 16px; }
+.wm-region-tag { font-size: 12px; color: #80d8ff; }
+.wm-region.closed .wm-region-tag { color: #9e9e9e; }
+.wm-region-desc { color: #c8c8d0; font-size: 12px; margin-bottom: 10px; line-height: 1.5; }
+.wm-chapters { display: flex; flex-wrap: wrap; gap: 8px; }
+.wm-chapter { padding: 8px 12px; background: #0f3460; border: 1px solid #533483; border-radius: 8px; color: #e0e0e0; cursor: pointer; font-size: 13px; }
+.wm-chapter:hover { background: #533483; }
+.wm-chapter.locked { opacity: 0.5; cursor: not-allowed; }
+.wm-chapter.boss { border-color: #ffd54f; color: #ffd54f; }
+
+/* 世界百科 & 角色传记（方向2 内容扩建 · 新叙事内容） */
+#lore-panel { position: fixed; inset: 0; display: none; justify-content: center; align-items: flex-start; background: rgba(10,10,26,0.96); z-index: 50; overflow-y: auto; padding: 24px; }
+#lore-content { width: 100%; max-width: 760px; color: #e0e0e0; margin: 0 auto; text-align: center; }
+#lore-content h2 { color: #f0c27f; margin: 4px 0; }
+.lore-sub { color: #a0d0ff; font-size: 13px; margin: 4px 0 8px; }
+.lore-section-title { color: #e0a0ff; text-align: left; margin: 18px 0 10px; font-size: 15px; font-weight: bold; border-left: 3px solid #7b4fa0; padding-left: 8px; }
+.lore-list { display: flex; flex-direction: column; gap: 10px; text-align: left; }
+.lore-entry { background: #16213e; border: 1px solid #533483; border-radius: 10px; padding: 12px 14px; }
+.lore-head { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+.lore-cat { font-size: 11px; color: #1a1a2e; background: #80d8ff; border-radius: 4px; padding: 1px 7px; }
+.lore-title { font-weight: bold; color: #f0c27f; font-size: 15px; }
+.lore-body { color: #c8c8d0; font-size: 13px; line-height: 1.7; }
+.bio-grid { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; }
+.bio-card { width: 340px; background: #16213e; border: 1px solid #533483; border-radius: 10px; padding: 12px 14px; text-align: left; }
+.bio-name { font-weight: bold; color: #f0c27f; font-size: 15px; margin-bottom: 3px; }
+.bio-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 5px; vertical-align: middle; }
+.bio-boss { font-size: 10px; color: #1a1a2e; background: #ffd54f; border-radius: 4px; padding: 0 5px; margin-left: 4px; }
+.bio-title { color: #a0d0ff; font-size: 12px; margin-bottom: 6px; }
+.bio-body { color: #c8c8d0; font-size: 12px; line-height: 1.65; }
+/* 战前装备系统（方向3 系统新创 · 装备 Equipment） */
+#menu-equipment { background: #0f3460; border-radius: 8px; padding: 10px 12px; margin: 10px 0; text-align: left; font-size: 12px; }
+.eq-unit { margin-bottom: 8px; }
+.eq-unit:last-child { margin-bottom: 0; }
+.eq-name { color: #f0c27f; font-weight: bold; margin-bottom: 4px; }
+.eq-row { display: flex; flex-wrap: wrap; gap: 6px; }
+.eq-btn { padding: 4px 8px; background: #16213e; border: 1px solid #533483; border-radius: 6px; color: #e0e0e0; cursor: pointer; font-size: 11px; }
+.eq-btn:hover { background: #533483; }
+.eq-btn.active { background: #533483; border-color: #ffd54f; color: #ffd54f; font-weight: bold; }
+.eq-btn .eq-stat { color: #80d8ff; font-size: 10px; }
+/* 兵种克制图例（方向2 Phase 1） */
+#menu-counter { background: #0f3460; border-radius: 8px; padding: 10px 12px; margin: 6px 0; font-size: 12px; line-height: 1.6; text-align: left; color: #c8c8d0; }
+#menu-counter .ct-title { color: #f0c27f; font-weight: bold; margin-bottom: 4px; }
+#menu-counter .ct-loop { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+#menu-counter .ct-dot { display: inline-block; width: 14px; height: 14px; border-radius: 3px; text-align: center; line-height: 14px; font-size: 11px; font-weight: bold; color: #1a1a2e; }
+#menu-counter .ct-arrow { color: #f0c27f; }
+#menu-counter .ct-note { margin-top: 4px; font-size: 11px; color: #9e9e9e; }
+/* 羁绊 / 好感度系统（方向3 系统新创 · Bond/Synergy） */
+#bonds-panel { background: #0f3460; border-radius: 8px; padding: 10px 12px; margin: 10px 0; text-align: left; font-size: 12px; max-height: 240px; overflow-y: auto; }
+.bond-grid { display: flex; flex-direction: column; gap: 8px; }
+.bond-pair { background: #16213e; border: 1px solid #533483; border-radius: 8px; padding: 8px 10px; }
+.bond-pair.bond-off { opacity: 0.55; }
+.bond-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
+.bond-names { color: #f0c27f; font-weight: bold; }
+.bond-level { color: #ffd54f; font-size: 11px; }
+.bond-talk { color: #c8c8d0; font-size: 11px; line-height: 1.55; margin: 4px 0; font-style: italic; }
+.bond-row { display: flex; gap: 6px; }
+.bond-btn { padding: 4px 8px; background: #533483; border: 1px solid #7b4fa0; border-radius: 6px; color: #fff; cursor: pointer; font-size: 11px; }
+.bond-btn:hover { background: #7b4fa0; }
+.bond-max { color: #69f0ae; font-size: 11px; }
 </style>
 </head>
 <body>
@@ -93,7 +182,7 @@ canvas { border-radius: 8px; cursor: pointer; }
       <span class="phase-info" id="phase-text">选择单位</span>
       <span id="save-info">战绩: <span id="win-count">0</span>胜 / <span id="lose-count">0</span>负</span>
     </div>
-    <canvas id="arena" width="640" height="640"></canvas>
+    <canvas id="arena" width="960" height="800"></canvas>
     <div id="action-bar">
       <button id="btn-move" onclick="Game.startMove()">移动 (M)</button>
       <button id="btn-end-turn" onclick="Game.endTurn()">结束回合 (Space)</button>
@@ -124,20 +213,43 @@ canvas { border-radius: 8px; cursor: pointer; }
       <button class="faction-btn active" id="faction-classic" onclick="Game.setPlayerFaction('classic')">经典（混编）</button>
       <button class="faction-btn" id="faction-light" onclick="Game.setPlayerFaction('light')">圣光（守护/治疗）</button>
     </div>
+    <div id="menu-counter">
+      <div class="ct-title">兵种克制（伤害 ×1.5）</div>
+      <div class="ct-loop">
+        <span class="ct-dot" style="background:#ff7043">战</span><span class="ct-arrow">克</span>
+        <span class="ct-dot" style="background:#4fc3f7">弓</span><span class="ct-arrow">克</span>
+        <span class="ct-dot" style="background:#b388ff">法</span><span class="ct-arrow">克</span>
+        <span class="ct-dot" style="background:#ff7043">战</span>
+        <span class="ct-dot" style="background:#69f0ae">奶</span><span class="ct-arrow">中立</span>
+      </div>
+      <div class="ct-note">战克弓 · 弓克法 · 法克战 · 奶为辅助中立。优先用克制兵种攻击，可造成额外 50% 伤害。</div>
+    </div>
+    <div id="menu-section-title">战前装备（为单位选择 1 件装备）</div>
+    <div id="menu-equipment"></div>
+    <div id="menu-section-title">羁绊 / 好感度（加深关系 · 战前部署联动加成）</div>
+    <div id="bonds-panel"></div>
     <div id="menu-section-title">成就</div>
     <div id="menu-achievements"></div>
     <div id="menu-section-title">单位图鉴（全单位档案）</div>
     <div id="menu-codex"></div>
-    <div id="menu-section-title">战役模式（选择关卡）</div>
+    <div id="menu-section-title">战役模式</div>
+    <button class="menu-btn" onclick="Game.showWorldMap()">🌍 打开世界地图（章节选择）</button>
+    <div id="menu-section-title">图鉴与百科</div>
+    <button class="menu-btn" onclick="Game.showLore()">📖 世界百科与角色传记</button>
+    <button class="menu-btn" onclick="Game.showSideStories()">📜 外传章节（裂缝之外的故事）</button>
+    <button class="menu-btn" onclick="Game.showHidden()">🔮 隐藏章节（蚀教真相 · 门彼之侧 · 灵脉分裂前叙事 · 战役通关后解锁）</button>
     <div id="menu-levels"></div>
     <div id="menu-section-title">快速对战</div>
     <button class="menu-btn" onclick="Game.startSkirmish()">单局遭遇（随机地图 / 随机敌人）</button>
   </div>
 </div>
+<div id="world-map"></div>
+<div id="lore-panel"></div>
 <div id="overlay">
   <div id="overlay-content">
     <h2 id="overlay-title"></h2>
     <p id="overlay-msg"></p>
+    <div id="result-stats" class="result-stats"></div>
     <button id="overlay-action" style="display:none"></button>
     <button onclick="Game.restart()">重新开始</button>
     <button onclick="Game.closeOverlay()">查看战场</button>

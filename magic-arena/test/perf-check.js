@@ -16,7 +16,7 @@ const vm = require('vm');
 // ------------------------------------------------------------
 // 1. 计数式 Canvas 2D 上下文（关键绘制调用累计到共享 counts）
 //    判别依据：
-//      moveTo      —— 仅 buildStaticLayer 绘制网格线时调用（每地图 18 次）
+//      moveTo      —— 仅 buildStaticLayer 绘制网格线时调用（每地图 24 次：13 纵 + 11 横）
 //      strokeRect  —— 仅 buildStaticLayer 绘制地形掩体边框时调用
 //      drawImage   —— 仅在 render() 合成静态层时调用（每帧一次）
 //      fillText    —— 静态层(地形文字) 与 动态层(单位名/状态) 都会调用（总量不用于断言）
@@ -141,12 +141,12 @@ const drawImageAfter = counts.drawImage;
 // 核心断言：地图未变 → 静态层不再重建，网格/地形绘制调用数保持恒定
 assert(perf2.staticRebuilds === 2, '30 帧交互后静态层重建次数仍为 2（缓存命中，无重复绘制网格），实际 ' + perf2.staticRebuilds);
 assert(strokeRectAfter === 1, '地形描边仍为 1 次（掩体仅在 build 绘制，不随帧重绘），实际 ' + strokeRectAfter);
-assert(moveToAfter === 18 * perf2.staticRebuilds, '网格线 moveTo 调用 = 18×重建次数（' + moveToAfter + ' = 18×' + perf2.staticRebuilds + '），证明网格未逐帧重绘');
+assert(moveToAfter === 24 * perf2.staticRebuilds, '网格线 moveTo 调用 = 24×重建次数（' + moveToAfter + ' = 24×' + perf2.staticRebuilds + '），证明网格未逐帧重绘');
 assert(drawImageAfter > 0, '每次交互帧都通过 drawImage 合成静态层（drawImage = ' + drawImageAfter + '）');
 
-// 量化收益：若无缓存，每帧重绘 18 条网格线 → 远超实际
+// 量化收益：若无缓存，每帧重绘 24 条网格线（GRID_W=12,GRID_H=10 → 13 纵+11 横）→ 远超实际
 const baselineRenders = 2; // init 1 + 切换 1
-const naiveMoveTo = 18 * (baselineRenders + frames);
+const naiveMoveTo = 24 * (baselineRenders + frames);
 assert(moveToAfter < naiveMoveTo, '静态层缓存显著降低绘制开销：实际 moveTo=' + moveToAfter + ' ≪ 无缓存预估 ' + naiveMoveTo + '（约 ' + Math.round((1 - moveToAfter / naiveMoveTo) * 100) + '% 减少）');
 
 // ------------------------------------------------------------
